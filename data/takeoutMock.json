@@ -1,0 +1,400 @@
+[
+  {
+    "id": "t1",
+    "restaurant": "阿香米线",
+    "name": "番茄鸡蛋米线",
+    "category": "云南米线",
+    "priceRange": "¥18-22",
+    "flavorTags": [
+      "酸辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": []
+  },
+  {
+    "id": "t2",
+    "restaurant": "阿香米线",
+    "name": "微辣牛肉米线",
+    "category": "云南米线",
+    "priceRange": "¥22-26",
+    "flavorTags": [
+      "微辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣",
+      "素食"
+    ]
+  },
+  {
+    "id": "t3",
+    "restaurant": "杨国福麻辣烫",
+    "name": "番茄锅底麻辣烫",
+    "category": "麻辣烫",
+    "priceRange": "¥25-35",
+    "flavorTags": [
+      "微辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣"
+    ]
+  },
+  {
+    "id": "t4",
+    "restaurant": "杨国福麻辣烫",
+    "name": "清汤锅底麻辣烫",
+    "category": "麻辣烫",
+    "priceRange": "¥22-32",
+    "flavorTags": [
+      "清淡",
+      "咸鲜"
+    ],
+    "avoidConflicts": []
+  },
+  {
+    "id": "t5",
+    "restaurant": "绿茶轻食",
+    "name": "鸡胸肉藜麦沙拉",
+    "category": "沙拉轻食",
+    "priceRange": "¥28-32",
+    "flavorTags": [
+      "清淡"
+    ],
+    "avoidConflicts": [
+      "不吃葱姜蒜",
+      "素食"
+    ]
+  },
+  {
+    "id": "t6",
+    "restaurant": "绿茶轻食",
+    "name": "牛油果虾仁沙拉",
+    "category": "沙拉轻食",
+    "priceRange": "¥32-38",
+    "flavorTags": [
+      "清淡",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t7",
+    "restaurant": "西贝莜面村",
+    "name": "羊肉烩面",
+    "category": "面食简餐",
+    "priceRange": "¥28-34",
+    "flavorTags": [
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t8",
+    "restaurant": "西贝莜面村",
+    "name": "酸汤水饺",
+    "category": "面食简餐",
+    "priceRange": "¥26-30",
+    "flavorTags": [
+      "酸辣"
+    ],
+    "avoidConflicts": [
+      "不吃辣",
+      "素食"
+    ]
+  },
+  {
+    "id": "t9",
+    "restaurant": "老乡鸡",
+    "name": "肥西老母鸡汤套餐",
+    "category": "快餐简餐",
+    "priceRange": "¥26-30",
+    "flavorTags": [
+      "清淡",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t10",
+    "restaurant": "老乡鸡",
+    "name": "黄焖鸡米饭",
+    "category": "快餐简餐",
+    "priceRange": "¥20-24",
+    "flavorTags": [
+      "咸鲜",
+      "甜口"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t11",
+    "restaurant": "禾绿回转寿司",
+    "name": "三文鱼亲子丼",
+    "category": "日式简餐",
+    "priceRange": "¥38-45",
+    "flavorTags": [
+      "清淡",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t12",
+    "restaurant": "禾绿回转寿司",
+    "name": "味噌汤套餐",
+    "category": "日式简餐",
+    "priceRange": "¥30-36",
+    "flavorTags": [
+      "清淡"
+    ],
+    "avoidConflicts": []
+  },
+  {
+    "id": "t13",
+    "restaurant": "嘉禾一品粥店",
+    "name": "皮蛋瘦肉粥",
+    "category": "粥铺",
+    "priceRange": "¥12-16",
+    "flavorTags": [
+      "清淡",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t14",
+    "restaurant": "嘉禾一品粥店",
+    "name": "小米南瓜粥+小笼包",
+    "category": "粥铺",
+    "priceRange": "¥16-20",
+    "flavorTags": [
+      "清淡",
+      "甜口"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t15",
+    "restaurant": "费大厨辣椒炒肉",
+    "name": "辣椒炒肉盖饭",
+    "category": "湘菜简餐",
+    "priceRange": "¥24-28",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣",
+      "素食"
+    ]
+  },
+  {
+    "id": "t16",
+    "restaurant": "袁记云饺",
+    "name": "鲜虾云吞",
+    "category": "面点简餐",
+    "priceRange": "¥18-22",
+    "flavorTags": [
+      "清淡",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t17",
+    "restaurant": "甜啦啦",
+    "name": "杨枝甘露",
+    "category": "甜品饮品",
+    "priceRange": "¥10-14",
+    "flavorTags": [
+      "甜口"
+    ],
+    "avoidConflicts": [
+      "无乳制品"
+    ]
+  },
+  {
+    "id": "t18",
+    "restaurant": "甜啦啦",
+    "name": "红豆薏米奶茶",
+    "category": "甜品饮品",
+    "priceRange": "¥10-14",
+    "flavorTags": [
+      "甜口"
+    ],
+    "avoidConflicts": [
+      "无乳制品"
+    ]
+  },
+  {
+    "id": "t19",
+    "restaurant": "大米先生",
+    "name": "番茄炖牛腩饭",
+    "category": "快餐简餐",
+    "priceRange": "¥22-26",
+    "flavorTags": [
+      "咸鲜",
+      "酸辣"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t20",
+    "restaurant": "大米先生",
+    "name": "清蒸鲈鱼饭",
+    "category": "快餐简餐",
+    "priceRange": "¥26-30",
+    "flavorTags": [
+      "清淡"
+    ],
+    "avoidConflicts": [
+      "素食"
+    ]
+  },
+  {
+    "id": "t21",
+    "restaurant": "探鱼",
+    "name": "麻辣烤鱼（草鱼）",
+    "category": "烤鱼简餐",
+    "priceRange": "¥45-58",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣",
+      "不吃海鲜",
+      "素食"
+    ]
+  },
+  {
+    "id": "t22",
+    "restaurant": "杨国福麻辣烫",
+    "name": "麻辣锅底重辣麻辣烫",
+    "category": "麻辣烫",
+    "priceRange": "¥28-38",
+    "flavorTags": [
+      "麻辣"
+    ],
+    "avoidConflicts": [
+      "不吃辣"
+    ]
+  },
+  {
+    "id": "t23",
+    "restaurant": "蜀大侠",
+    "name": "麻辣水煮肉片饭",
+    "category": "川菜简餐",
+    "priceRange": "¥22-28",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣",
+      "素食"
+    ]
+  },
+  {
+    "id": "t24",
+    "restaurant": "蜀大侠",
+    "name": "夫妻肺片盖饭",
+    "category": "川菜简餐",
+    "priceRange": "¥20-26",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣",
+      "素食"
+    ]
+  },
+  {
+    "id": "t25",
+    "restaurant": "杨国福麻辣烫",
+    "name": "全素麻辣烫",
+    "category": "麻辣烫",
+    "priceRange": "¥20-28",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣"
+    ]
+  },
+  {
+    "id": "t26",
+    "restaurant": "觅食素麻辣香锅",
+    "name": "素麻辣香锅（豆腐菌菇）",
+    "category": "素食川菜",
+    "priceRange": "¥22-30",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣"
+    ]
+  },
+  {
+    "id": "t27",
+    "restaurant": "海底捞",
+    "name": "清汤素食火锅套餐",
+    "category": "火锅",
+    "priceRange": "¥48-65",
+    "flavorTags": [
+      "清淡",
+      "咸鲜"
+    ],
+    "avoidConflicts": []
+  },
+  {
+    "id": "t28",
+    "restaurant": "海底捞",
+    "name": "麻辣素食火锅套餐",
+    "category": "火锅",
+    "priceRange": "¥52-68",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣"
+    ]
+  },
+  {
+    "id": "t29",
+    "restaurant": "蜀大侠",
+    "name": "麻辣豆腐脑盖饭",
+    "category": "川菜简餐",
+    "priceRange": "¥16-22",
+    "flavorTags": [
+      "麻辣",
+      "咸鲜"
+    ],
+    "avoidConflicts": [
+      "不吃辣"
+    ]
+  }
+]

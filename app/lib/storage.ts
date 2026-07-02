@@ -1,0 +1,141 @@
+import { v4 as uuid } from "uuid";
+import takeoutSeed from "@/data/takeoutMock.json";
+import { DEFAULT_INGREDIENTS } from "./tags";
+import type {
+  CommonIngredient,
+  MealRecord,
+  TakeoutDish,
+  UserProfile,
+  WeeklyInsight,
+} from "./types";
+import { approxTimeForSlot, mealSlotFromTime, weekStartOf } from "./date";
+
+const KEYS = {
+  ingredients: "recipe.commonIngredients.v1",
+  meals: "recipe.mealRecords.v1",
+  weeklyInsight: "recipe.weeklyInsight.v1",
+  userProfile: "recipe.userProfile.v1",
+  takeoutMock: "recipe.takeoutMock.v2",
+};
+
+function read<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function write<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+// ---------- 常用食材 ----------
+
+export function loadCommonIngredients(): CommonIngredient[] {
+  return read<CommonIngredient[]>(KEYS.ingredients, []);
+}
+
+export function addCommonIngredient(label: string): CommonIngredient {
+  const list = loadCommonIngredients();
+  const item: CommonIngredient = { id: uuid(), label, createdAt: Date.now() };
+  write(KEYS.ingredients, [...list, item]);
+  return item;
+}
+
+export function removeCommonIngredient(id: string) {
+  write(
+    KEYS.ingredients,
+    loadCommonIngredients().filter((i) => i.id !== id)
+  );
+}
+
+export function seedDefaultIngredientsIfEmpty() {
+  if (loadCommonIngredients().length > 0) return;
+  const seeded = DEFAULT_INGREDIENTS.map((label) => ({
+    id: uuid(),
+    label,
+    createdAt: Date.now(),
+  }));
+  write(KEYS.ingredients, seeded);
+}
+
+// ---------- 饮食记录 ----------
+
+/** 兼容旧数据：早期版本的记录没有 time 字段，按其固定餐次给一个近似时间，保证排序和展示一致 */
+function normalizeMeal(m: MealRecord): MealRecord {
+  if (m.time) return m;
+  const time = approxTimeForSlot(m.mealSlot);
+  return { ...m, time, mealSlot: m.mealSlot ?? mealSlotFromTime(time) };
+}
+
+export function loadMealRecords(): MealRecord[] {
+  return read<MealRecord[]>(KEYS.meals, []).map(normalizeMeal);
+}
+
+export function addMealRecord(m: Omit<MealRecord, "id" | "createdAt" | "mealSlot">): MealRecord {
+  const list = loadMealRecords();
+  const record: MealRecord = { ...m, mealSlot: mealSlotFromTime(m.time), id: uuid(), createdAt: Date.now() };
+  write(KEYS.meals, [record, ...list]);
+  return record;
+}
+
+export function updateMealRecord(id: string, patch: Partial<MealRecord>) {
+  const list = loadMealRecords();
+  const next = list.map((m) => {
+    if (m.id !== id) return m;
+    const updated = { ...m, ...patch };
+    if (patch.time) updated.mealSlot = mealSlotFromTime(patch.time);
+    if (m.source === "ai" && (patch.dishes || patch.time)) updated.source = "ai-edited";
+    return updated;
+  });
+  write(KEYS.meals, next);
+}
+
+export function deleteMealRecord(id: string) {
+  write(
+    KEYS.meals,
+    loadMealRecords().filter((m) => m.id !== id)
+  );
+}
+
+export function getMealsInWeek(weekStartISO: string): MealRecord[] {
+  return loadMealRecords().filter((m) => weekStartOf(m.date) === weekStartISO);
+}
+
+// ---------- 本周分析缓存 ----------
+
+export function loadWeeklyInsight(weekStart: string): WeeklyInsight | null {
+  const all = read<Record<string, WeeklyInsight>>(KEYS.weeklyInsight, {});
+  return all[weekStart] ?? null;
+}
+
+export function saveWeeklyInsight(w: WeeklyInsight) {
+  const all = read<Record<string, WeeklyInsight>>(KEYS.weeklyInsight, {});
+  all[w.weekStart] = w;
+  write(KEYS.weeklyInsight, all);
+}
+
+// ---------- 用户饮食习惯文档 ----------
+
+export function loadUserProfile(): UserProfile | null {
+  return read<UserProfile | null>(KEYS.userProfile, null);
+}
+
+export function saveUserProfile(content: string) {
+  write<UserProfile>(KEYS.userProfile, { content, updatedAt: Date.now() });
+}
+
+// ---------- 外卖 mock 库 ----------
+
+export function loadTakeoutDishes(): TakeoutDish[] {
+  return read<TakeoutDish[]>(KEYS.takeoutMock, []);
+}
+
+export function seedTakeoutMockIfEmpty() {
+  if (loadTakeoutDishes().length > 0) return;
+  write(KEYS.takeoutMock, takeoutSeed as TakeoutDish[]);
+}
