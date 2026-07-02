@@ -1,5 +1,7 @@
 # 🍱 今天吃什么呀 — AI 智能食谱推荐系统
 
+**PRD文档和技术文档详见/docs/PRD.md与TECH_SPEC.md**
+
 一款以**治愈风格**为核心设计语言的中文 AI 饮食助手，帮你用现有食材决定今天吃什么，记录每周饮食，并由 AI 营养分析师给出个性化建议。
 
 ![Tech Stack](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
