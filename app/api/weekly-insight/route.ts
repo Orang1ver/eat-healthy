@@ -11,10 +11,12 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { meals = [], weekRange = "", userProfile } = body as {
+  const { meals = [], weekRange = "", userProfile, healthContext, weekHealthSummary } = body as {
     meals: MealRecord[];
     weekRange: string;
     userProfile?: string;
+    healthContext?: string;
+    weekHealthSummary?: string;
   };
 
   const prompt = buildWeeklyInsightPrompt({
@@ -26,6 +28,8 @@ export async function POST(req: Request) {
       dishes: m.dishes.map((d) => ({ name: d.name, ingredients: d.ingredients.map((i) => i.label) })),
     })),
     userProfile,
+    healthContext,
+    weekHealthSummary,
   });
 
   try {

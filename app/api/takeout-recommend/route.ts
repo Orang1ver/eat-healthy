@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     note = "",
     goal = "",
     userProfile,
+    healthContext,
     takeoutDb = [],
     recentMeals,
     weeklyInsight,
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
     note: string;
     goal: string;
     userProfile?: string;
+    healthContext?: string;
     takeoutDb: TakeoutDish[];
     recentMeals?: { date: string; time: string; channel: string; dishes: { name: string; ingredients: string[] }[] }[];
     weeklyInsight?: string;
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
     return bMatch - aMatch;
   });
 
-  const prompt = buildTakeoutPrompt({ flavorTags, avoidTags, note, goal, userProfile, takeoutDb: candidates, recentMeals, weeklyInsight });
+  const prompt = buildTakeoutPrompt({ flavorTags, avoidTags, note, goal, userProfile, healthContext, takeoutDb: candidates, recentMeals, weeklyInsight });
 
   try {
     const client = new OpenAI({ apiKey, baseURL: DEEPSEEK_BASE_URL });

@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     wantDessert = false,
     goal = "",
     userProfile,
+    healthContext,
     feedback,
     recentMeals,
     weeklyInsight,
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
     wantDessert: boolean;
     goal: string;
     userProfile?: string;
+    healthContext?: string;
     feedback?: string;
     recentMeals?: { date: string; time: string; channel: string; dishes: { name: string; ingredients: string[] }[] }[];
     weeklyInsight?: string;
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
     wantDessert,
     goal,
     userProfile,
+    healthContext,
     feedback,
     recentMeals,
     weeklyInsight,
