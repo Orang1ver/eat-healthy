@@ -3,6 +3,8 @@ import takeoutSeed from "@/data/takeoutMock.json";
 import { DEFAULT_INGREDIENTS } from "./tags";
 import type {
   CommonIngredient,
+  DailyCheckin,
+  HealthProfile,
   MealRecord,
   TakeoutDish,
   UserProfile,
@@ -16,6 +18,8 @@ const KEYS = {
   weeklyInsight: "recipe.weeklyInsight.v1",
   userProfile: "recipe.userProfile.v1",
   takeoutMock: "recipe.takeoutMock.v2",
+  healthProfile: "recipe.healthProfile.v1",
+  dailyCheckins: "recipe.dailyCheckins.v1",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -138,4 +142,46 @@ export function loadTakeoutDishes(): TakeoutDish[] {
 export function seedTakeoutMockIfEmpty() {
   if (loadTakeoutDishes().length > 0) return;
   write(KEYS.takeoutMock, takeoutSeed as TakeoutDish[]);
+}
+
+// ---------- 健康档案 ----------
+
+export function loadHealthProfile(): HealthProfile | null {
+  return read<HealthProfile | null>(KEYS.healthProfile, null);
+}
+
+export function saveHealthProfile(p: Omit<HealthProfile, "updatedAt">): HealthProfile {
+  const profile: HealthProfile = { ...p, updatedAt: Date.now() };
+  write(KEYS.healthProfile, profile);
+  return profile;
+}
+
+// ---------- 每日健康打卡 ----------
+
+export function loadCheckin(date: string): DailyCheckin | null {
+  const all = read<Record<string, DailyCheckin>>(KEYS.dailyCheckins, {});
+  return all[date] ?? null;
+}
+
+export function saveCheckin(date: string, patch: Partial<Omit<DailyCheckin, "date">>): DailyCheckin {
+  const all = read<Record<string, DailyCheckin>>(KEYS.dailyCheckins, {});
+  const prev = all[date];
+  const next: DailyCheckin = {
+    date,
+    waterMl: Math.max(0, patch.waterMl ?? prev?.waterMl ?? 0),
+    steps: Math.max(0, patch.steps ?? prev?.steps ?? 0),
+    sleepHours: patch.sleepHours ?? prev?.sleepHours,
+    mood: patch.mood ?? prev?.mood,
+    updatedAt: Date.now(),
+  };
+  all[date] = next;
+  write(KEYS.dailyCheckins, all);
+  return next;
+}
+
+export function getCheckinsInWeek(weekStartISO: string): DailyCheckin[] {
+  const all = read<Record<string, DailyCheckin>>(KEYS.dailyCheckins, {});
+  return Object.values(all)
+    .filter((c) => weekStartOf(c.date) === weekStartISO)
+    .sort((a, b) => a.date.localeCompare(b.date));
 }

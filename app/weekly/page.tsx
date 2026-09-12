@@ -6,12 +6,16 @@ import { AddMealDialog } from "../components/AddMealDialog";
 import { apiKeyHeaders } from "../lib/apiKeys";
 import { addDays, formatWeekRange, todayISO, weekDates, weekStartOf, WEEKDAY_LABELS } from "../lib/date";
 import {
+  getCheckinsInWeek,
   getMealsInWeek,
+  loadCheckin,
+  loadHealthProfile,
   loadUserProfile,
   loadWeeklyInsight,
   saveUserProfile,
   saveWeeklyInsight,
 } from "../lib/storage";
+import { buildHealthContext, buildWeekHealthSummary, calcDailyTargets } from "../lib/health";
 import type { MealRecord } from "../lib/types";
 
 export default function WeeklyPage() {
@@ -36,11 +40,18 @@ export default function WeeklyPage() {
   async function generateInsight() {
     setLoadingInsight(true);
     try {
-      const profile = loadUserProfile();
+      const profile = loadHealthProfile();
+      const targets = profile ? calcDailyTargets(profile) : null;
       const res = await fetch("/api/weekly-insight", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({ meals, weekRange: formatWeekRange(weekStart), userProfile: profile?.content }),
+        body: JSON.stringify({
+          meals,
+          weekRange: formatWeekRange(weekStart),
+          userProfile: loadUserProfile()?.content,
+          healthContext: profile ? buildHealthContext(profile, loadCheckin(todayISO()), targets) : undefined,
+          weekHealthSummary: buildWeekHealthSummary(getCheckinsInWeek(weekStart)) || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "分析失败");
@@ -50,7 +61,7 @@ export default function WeeklyPage() {
       const profileRes = await fetch("/api/update-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({ recentMeals: meals, existingProfile: profile?.content }),
+        body: JSON.stringify({ recentMeals: meals, existingProfile: loadUserProfile()?.content }),
       });
       const profileData = await profileRes.json();
       if (profileRes.ok && profileData.content) saveUserProfile(profileData.content);

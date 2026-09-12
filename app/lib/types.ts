@@ -61,3 +61,30 @@ export type UserProfile = {
   content: string;
   updatedAt: number;
 };
+
+// ---------- 健康档案（v1 结合版：档案驱动推荐） ----------
+
+export type Sex = "男" | "女";
+export type ActivityLevel = "久坐少动" | "轻度活动" | "中度活动" | "高度活动";
+export type HealthGoal = "减脂" | "增肌" | "维持健康";
+
+export type HealthProfile = {
+  sex: Sex;
+  age: number;
+  heightCm: number;
+  weightKg: number;
+  activityLevel: ActivityLevel;
+  goal: HealthGoal;
+  allergies: string; // 过敏/忌口，自由文本
+  conditions: string; // 身体状况备注，如肠胃不好、乳糖不耐
+  updatedAt: number;
+};
+
+export type DailyCheckin = {
+  date: string; // ISO "2026-09-13"
+  waterMl: number;
+  steps: number;
+  sleepHours?: number;
+  mood?: "好" | "一般" | "累";
+  updatedAt: number;
+};

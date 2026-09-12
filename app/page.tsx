@@ -9,7 +9,8 @@ import { TakeoutCard } from "./components/TakeoutCard";
 import { apiKeyHeaders } from "./lib/apiKeys";
 import { getDisabledTags } from "./lib/mutualExclusion";
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./lib/tags";
-import { addCommonIngredient, addMealRecord, loadCommonIngredients, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
+import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
+import { buildHealthContext, calcDailyTargets } from "./lib/health";
 import { todayISO, weekStartOf } from "./lib/date";
 import type { CommonIngredient, Dish, TakeoutDish } from "./lib/types";
 
@@ -47,6 +48,13 @@ export default function Home() {
   useEffect(() => {
     setCommonIngredients(loadCommonIngredients());
   }, []);
+
+  // 把健康档案 + 今日打卡拼成上下文，随每次推荐发给 AI
+  function healthContext(): string | undefined {
+    const profile = loadHealthProfile();
+    if (!profile) return undefined;
+    return buildHealthContext(profile, loadCheckin(todayISO()), calcDailyTargets(profile));
+  }
 
   const disabledFlavor = getDisabledTags([...flavorTags, ...avoidTags]);
   const disabledAvoid = getDisabledTags([...flavorTags, ...avoidTags]);
@@ -88,6 +96,7 @@ export default function Home() {
           goal,
           feedback,
           userProfile: loadUserProfile()?.content,
+          healthContext: healthContext(),
           recentMeals: loadMealRecords().slice(0, 10).map((m) => ({
             date: m.date,
             time: m.time,
@@ -118,6 +127,7 @@ export default function Home() {
           flavorTags, avoidTags, note, goal,
           takeoutDb: loadTakeoutDishes(),
           userProfile: loadUserProfile()?.content,
+          healthContext: healthContext(),
           recentMeals: loadMealRecords().slice(0, 10).map((m) => ({
             date: m.date,
             time: m.time,
@@ -202,7 +212,10 @@ export default function Home() {
             >
               ⚙️
             </button>
-            <a href="/weekly" className="heal-btn heal-btn-feature flex items-center gap-1.5 px-4 py-2.5 text-sm">
+            <a href="/health" className="heal-btn heal-btn-feature flex items-center gap-1.5 px-4 py-2.5 text-sm">
+              💪 健康小屋
+            </a>
+            <a href="/weekly" className="heal-btn heal-btn-primary flex items-center gap-1.5 px-4 py-2.5 text-sm">
               📅 本周回顾
             </a>
           </div>

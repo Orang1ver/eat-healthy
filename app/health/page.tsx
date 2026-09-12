@@ -1,0 +1,323 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { todayISO, weekStartOf, addDays, WEEKDAY_LABELS, weekDates } from "../lib/date";
+import { loadHealthProfile, loadCheckin, saveCheckin, saveHealthProfile, getCheckinsInWeek } from "../lib/storage";
+import { ACTIVITY_LEVELS, HEALTH_GOALS, calcDailyTargets } from "../lib/health";
+import type { ActivityLevel, DailyCheckin, HealthGoal, HealthProfile, Sex } from "../lib/types";
+
+const MOODS: { key: NonNullable<DailyCheckin["mood"]>; emoji: string }[] = [
+  { key: "好", emoji: "😊" },
+  { key: "一般", emoji: "😐" },
+  { key: "累", emoji: "😫" },
+];
+
+export default function HealthPage() {
+  const [profile, setProfile] = useState<HealthProfile | null>(null);
+  const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
+  const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()));
+
+  // 档案表单
+  const [sex, setSex] = useState<Sex>("男");
+  const [age, setAge] = useState(20);
+  const [heightCm, setHeightCm] = useState(170);
+  const [weightKg, setWeightKg] = useState(60);
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>("轻度活动");
+  const [goal, setGoal] = useState<HealthGoal>("维持健康");
+  const [allergies, setAllergies] = useState("");
+  const [conditions, setConditions] = useState("");
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    const p = loadHealthProfile();
+    if (p) {
+      setProfile(p);
+      setSex(p.sex);
+      setAge(p.age);
+      setHeightCm(p.heightCm);
+      setWeightKg(p.weightKg);
+      setActivityLevel(p.activityLevel);
+      setGoal(p.goal);
+      setAllergies(p.allergies);
+      setConditions(p.conditions);
+    }
+    setCheckin(loadCheckin(todayISO()));
+  }, []);
+
+  const targets = useMemo(() => (profile ? calcDailyTargets(profile) : null), [profile]);
+  // checkin 变化时今天那一格也要立刻点亮，所以这里不做 memo，直接每次渲染重算（只有 7 天，开销可忽略）
+  const weekCheckins = getCheckinsInWeek(weekStart);
+
+  function handleSaveProfile() {
+    if (age < 10 || age > 100 || heightCm < 100 || heightCm > 250 || weightKg < 25 || weightKg > 200) {
+      setFormError("请检查年龄（10-100）、身高（100-250cm）、体重（25-200kg）是否合理");
+      return;
+    }
+    setFormError("");
+    setProfile(saveHealthProfile({ sex, age, heightCm, weightKg, activityLevel, goal, allergies, conditions }));
+  }
+
+  function updateCheckin(patch: Parameters<typeof saveCheckin>[1]) {
+    setCheckin(saveCheckin(todayISO(), patch));
+  }
+
+  const water = checkin?.waterMl ?? 0;
+  const steps = checkin?.steps ?? 0;
+  const waterTarget = targets?.waterTarget ?? 2000;
+  const stepsTarget = targets?.stepsTarget ?? 8000;
+  const waterPct = Math.min(100, Math.round((water / waterTarget) * 100));
+  const stepsPct = Math.min(100, Math.round((steps / stepsTarget) * 100));
+
+  return (
+    <main className="min-h-screen p-4 md:p-8" style={{ background: "var(--heal-bg)" }}>
+      <div className="mx-auto max-w-2xl">
+        <header className="mb-4 flex items-center justify-between">
+          <h1 className="text-xl font-medium" style={{ fontFamily: "var(--font-serif, serif)" }}>
+            💪 健康小屋
+          </h1>
+          <Link href="/" className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+            ← 返回首页
+          </Link>
+        </header>
+
+        {!profile && (
+          <div className="heal-card mb-4 p-4 text-sm leading-7" style={{ background: "var(--heal-blue-50)", color: "var(--heal-blue-text)" }}>
+            先花一分钟填好下面的健康档案，我会帮你算出每天该吃多少热量、喝多少水、走多少步，推荐饭菜时也会参考它们 💛
+          </div>
+        )}
+
+        {/* 今日打卡 */}
+        <div className="heal-card mb-4 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium">🏠 今日打卡</span>
+            <span className="text-xs" style={{ color: "var(--heal-muted)" }}>
+              {todayISO()}
+            </span>
+          </div>
+
+          <div className="mb-4">
+            <div className="mb-1 flex items-baseline justify-between text-xs">
+              <span>💧 喝水</span>
+              <span style={{ color: "var(--heal-muted)" }}>
+                {water} / {waterTarget} ml {waterPct >= 100 ? "🎉" : ""}
+              </span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${waterPct}%`, background: waterPct >= 100 ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => updateCheckin({ waterMl: water + 250 })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                +250ml
+              </button>
+              <button type="button" onClick={() => updateCheckin({ waterMl: water + 500 })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                +500ml
+              </button>
+              <button type="button" onClick={() => updateCheckin({ waterMl: Math.max(0, water - 250) })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                -250ml
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="mb-1 flex items-baseline justify-between text-xs">
+              <span>🚶 步数</span>
+              <span style={{ color: "var(--heal-muted)" }}>
+                {steps} / {stepsTarget} {stepsPct >= 100 ? "🎉" : ""}
+              </span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${stepsPct}%`, background: stepsPct >= 100 ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => updateCheckin({ steps: steps + 1000 })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                +1000 步
+              </button>
+              <input
+                type="number"
+                min={0}
+                className="w-28 rounded-full border px-3 py-1.5 text-xs"
+                placeholder="直接输入"
+                value={steps || ""}
+                onChange={(e) => updateCheckin({ steps: Math.max(0, Number(e.target.value) || 0) })}
+                style={{ borderColor: "var(--heal-card-border)" }}
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <span className="mb-2 block text-xs">😴 昨晚睡眠</span>
+            <div className="flex flex-wrap gap-2">
+              {[6, 7, 8, 9].map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => updateCheckin({ sleepHours: h })}
+                  className={`heal-btn px-3 py-1.5 text-xs ${checkin?.sleepHours === h ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                >
+                  {h} 小时
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span className="mb-2 block text-xs">🌤️ 今天状态</span>
+            <div className="flex flex-wrap gap-2">
+              {MOODS.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => updateCheckin({ mood: m.key })}
+                  className={`heal-btn px-3 py-1.5 text-xs ${checkin?.mood === m.key ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                >
+                  {m.emoji} {m.key}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 本周打卡一览 */}
+        <div className="heal-card mb-4 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-medium">📊 本周打卡</span>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setWeekStart((w) => addDays(w, -7))} className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs">
+                ‹
+              </button>
+              <button type="button" onClick={() => setWeekStart((w) => addDays(w, 7))} className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs">
+                ›
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {weekDates(weekStart).map((d, i) => {
+              const c = weekCheckins.find((x) => x.date === d);
+              const okWater = targets && c && c.waterMl >= targets.waterTarget;
+              const okSteps = targets && c && c.steps >= targets.stepsTarget;
+              return (
+                <div key={d} className="rounded-xl px-1 py-2" style={{ background: "var(--heal-blue-50)" }}>
+                  <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                    {WEEKDAY_LABELS[i]}
+                  </div>
+                  <div className="mt-1 text-sm leading-none">
+                    {okWater ? "💧" : ""}
+                    {okSteps ? "🚶" : ""}
+                    {!okWater && !okSteps ? <span className="text-[10px]" style={{ color: "var(--heal-card-border)" }}>·</span> : ""}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+            💧 当天喝够水 · 🚶 当天走够步数，都达标就会点亮
+          </p>
+        </div>
+
+        {/* 每日目标（有档案才显示） */}
+        {profile && targets && (
+          <div className="heal-card mb-4 p-4">
+            <span className="mb-3 block text-sm font-medium">🎯 每日健康目标</span>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { label: "热量", value: `${targets.calorieTarget}`, unit: "kcal", hint: `代谢 ${targets.bmr}` },
+                { label: "喝水", value: `${targets.waterTarget}`, unit: "ml", hint: "约 35ml/kg" },
+                { label: "步数", value: `${targets.stepsTarget}`, unit: "步", hint: "按活动量" },
+                { label: "BMI", value: `${targets.bmi}`, unit: "", hint: targets.bmiLabel },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl p-3 text-center" style={{ background: "var(--heal-amber-50)" }}>
+                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                    {item.label}
+                  </div>
+                  <div className="text-lg font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                    {item.value}
+                    <span className="text-[10px]"> {item.unit}</span>
+                  </div>
+                  <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                    {item.hint}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 健康档案表单 */}
+        <div className="heal-card p-4">
+          <span className="mb-3 block text-sm font-medium">📋 我的健康档案</span>
+
+          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs">性别</label>
+              <div className="flex gap-2">
+                {(["男", "女"] as Sex[]).map((s) => (
+                  <button key={s} type="button" onClick={() => setSex(s)} className={`heal-btn flex-1 px-3 py-1.5 text-xs ${sex === s ? "heal-btn-feature" : "heal-btn-ghost"}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs">年龄</label>
+              <input type="number" min={10} max={100} className="w-full rounded-xl border p-2 text-sm" value={age} onChange={(e) => setAge(Number(e.target.value) || 0)} style={{ borderColor: "var(--heal-card-border)" }} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs">身高（cm）</label>
+              <input type="number" min={100} max={250} className="w-full rounded-xl border p-2 text-sm" value={heightCm} onChange={(e) => setHeightCm(Number(e.target.value) || 0)} style={{ borderColor: "var(--heal-card-border)" }} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs">体重（kg）</label>
+              <input type="number" min={25} max={200} className="w-full rounded-xl border p-2 text-sm" value={weightKg} onChange={(e) => setWeightKg(Number(e.target.value) || 0)} style={{ borderColor: "var(--heal-card-border)" }} />
+            </div>
+          </div>
+
+          <label className="mb-1 block text-xs">日常活动量</label>
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            {ACTIVITY_LEVELS.map((a) => (
+              <button key={a.label} type="button" onClick={() => setActivityLevel(a.label)} className={`heal-btn px-2 py-1.5 text-left text-xs ${activityLevel === a.label ? "heal-btn-feature" : "heal-btn-ghost"}`}>
+                {a.label}
+                <span className="mt-0.5 block text-[10px] font-normal" style={{ color: "var(--heal-muted)" }}>
+                  {a.desc}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <label className="mb-1 block text-xs">健康目标</label>
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            {HEALTH_GOALS.map((g) => (
+              <button key={g.key} type="button" onClick={() => setGoal(g.key)} className={`heal-btn px-2 py-1.5 text-xs ${goal === g.key ? "heal-btn-primary" : "heal-btn-ghost"}`}>
+                {g.key}
+                <span className="mt-0.5 block text-[10px] font-normal" style={{ color: "var(--heal-muted)" }}>
+                  {g.desc}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <label className="mb-1 block text-xs">忌口 / 过敏（一句话）</label>
+          <input className="mb-3 w-full rounded-xl border p-2 text-sm" placeholder="如：海鲜过敏，不吃香菜" value={allergies} onChange={(e) => setAllergies(e.target.value)} style={{ borderColor: "var(--heal-card-border)" }} />
+
+          <label className="mb-1 block text-xs">身体状况备注</label>
+          <input className="mb-3 w-full rounded-xl border p-2 text-sm" placeholder="如：肠胃不太好，少吃太辣太冰" value={conditions} onChange={(e) => setConditions(e.target.value)} style={{ borderColor: "var(--heal-card-border)" }} />
+
+          {formError && <p className="mb-2 text-xs text-rose-600">{formError}</p>}
+
+          <button type="button" onClick={handleSaveProfile} className="heal-btn heal-btn-primary w-full px-4 py-2.5 text-sm">
+            {profile ? "更新档案（目标会随之刷新）" : "保存档案，生成我的每日目标"}
+          </button>
+          <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+            档案保存在你自己设备的浏览器里，推荐饭菜和外卖时会自动参考。
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}

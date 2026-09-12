@@ -19,6 +19,7 @@ export function buildRecommendPrompt(input: {
   wantDessert: boolean;
   goal: string;
   userProfile?: string;
+  healthContext?: string;
   feedback?: string;
   recentMeals?: { date: string; time: string; channel: string; dishes: { name: string; ingredients: string[] }[] }[];
   weeklyInsight?: string;
@@ -43,6 +44,7 @@ export function buildRecommendPrompt(input: {
     : null;
 
   return `你是一个温暖治愈系的中文家庭厨房助手，根据用户的食材、口味、忌口、做法偏好和饮食目标，设计一顿饭（可能包含多道菜）。
+${input.healthContext ? `\n【用户健康档案与今日状态】\n${input.healthContext}\n设计时请结合健康档案：份量和食材搭配尽量贴合每日热量参考与健康目标，严格避开忌口/过敏项。` : ""}
 
 【已有食材】${input.ingredients.join("、") || "（无）"}
 【食材使用规则】${pantryRule}
@@ -77,6 +79,7 @@ export function buildTakeoutPrompt(input: {
   note: string;
   goal: string;
   userProfile?: string;
+  healthContext?: string;
   takeoutDb: { id: string; restaurant: string; name: string; category: string; flavorTags: string[] }[];
   recentMeals?: { date: string; time: string; channel: string; dishes: { name: string; ingredients: string[] }[] }[];
   weeklyInsight?: string;
@@ -91,6 +94,7 @@ export function buildTakeoutPrompt(input: {
 
   return `你是一个温暖治愈系的中文外卖推荐助手。下面是可选外卖库，你只能从中挑选，不能编造不存在的商家或菜品：
 ${dbText}
+${input.healthContext ? `\n【用户健康档案与今日状态】\n${input.healthContext}\n选择时请结合健康档案：严格避开忌口/过敏项，兼顾热量参考与健康目标（如正在减脂可优先清淡、有蔬菜、粥粉面类而非重油炸物）。` : ""}
 
 【口味偏好语义】
 ${hintsFor(FLAVOR_TAGS, input.flavorTags) || "（无特别偏好）"}
@@ -114,9 +118,15 @@ export function buildWeeklyInsightPrompt(input: {
   weekRange: string;
   meals: { date: string; mealSlot: string; channel: string; dishes: { name: string; ingredients: string[] }[] }[];
   userProfile?: string;
+  healthContext?: string;
+  weekHealthSummary?: string;
 }) {
   const mealsText = input.meals
     .map((m) => `${m.date} ${m.mealSlot}（${m.channel}）：${m.dishes.map((d) => `${d.name}(${d.ingredients.join("、")})`).join("、")}`)
+    .join("\n");
+
+  const healthPart = [input.healthContext ? `【健康档案】\n${input.healthContext}` : "", input.weekHealthSummary ? `【本周健康打卡汇总】${input.weekHealthSummary}` : ""]
+    .filter(Boolean)
     .join("\n");
 
   return `你是一位温暖的中文营养分析师，基于用户本周（${input.weekRange}）真实的饮食记录给出定性点评，不要编造任何具体数字（不计算kcal/蛋白质等精确数值）。
@@ -124,6 +134,7 @@ export function buildWeeklyInsightPrompt(input: {
 【本周饮食记录】
 ${mealsText || "（本周暂无记录）"}
 ${input.userProfile ? `【用户长期饮食习惯参考】\n${input.userProfile}` : ""}
+${healthPart ? `\n${healthPart}\n点评时可以顺带结合健康打卡情况（喝水/步数/睡眠）给一句鼓励或提醒。` : ""}
 
 请给出一段 150 字以内的点评，语气温暖鼓励，指出做得好的地方和一个具体可行的小建议。直接返回纯文本，不要 JSON。`;
 }
