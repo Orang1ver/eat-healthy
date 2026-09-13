@@ -31,11 +31,11 @@ export default function HealthPage() {
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()));
 
-  // 档案表单
+  // 档案表单。数字字段用 null 表示"已删空未填"，输入框才能清空（否则一删就变成 0）
   const [sex, setSex] = useState<Sex>("男");
-  const [age, setAge] = useState(20);
-  const [heightCm, setHeightCm] = useState(170);
-  const [weightKg, setWeightKg] = useState(60);
+  const [age, setAge] = useState<number | null>(20);
+  const [heightCm, setHeightCm] = useState<number | null>(170);
+  const [weightKg, setWeightKg] = useState<number | null>(60);
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>("轻度活动");
   const [goal, setGoal] = useState<HealthGoal>("维持健康");
   const [allergies, setAllergies] = useState("");
@@ -63,6 +63,10 @@ export default function HealthPage() {
   const weekCheckins = getCheckinsInWeek(weekStart);
 
   function handleSaveProfile() {
+    if (age == null || heightCm == null || weightKg == null) {
+      setFormError("年龄、身高、体重都要填上才能算出每日目标");
+      return;
+    }
     if (age < 10 || age > 100 || heightCm < 100 || heightCm > 250 || weightKg < 25 || weightKg > 200) {
       setFormError("请检查年龄（10-100）、身高（100-250cm）、体重（25-200kg）是否合理");
       return;
@@ -300,15 +304,45 @@ export default function HealthPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs">年龄</label>
-              <input type="number" min={10} max={100} className="w-full rounded-xl border p-2 text-sm" value={age} onChange={(e) => setAge(Number(e.target.value) || 0)} style={{ borderColor: "var(--heal-card-border)" }} />
+              <input
+                type="number"
+                inputMode="numeric"
+                min={10}
+                max={100}
+                className="w-full rounded-xl border p-2 text-sm"
+                value={age ?? ""}
+                placeholder="如 20"
+                onChange={(e) => setAge(e.target.value === "" ? null : Number(e.target.value))}
+                style={{ borderColor: "var(--heal-card-border)" }}
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs">身高（cm）</label>
-              <input type="number" min={100} max={250} className="w-full rounded-xl border p-2 text-sm" value={heightCm} onChange={(e) => setHeightCm(Number(e.target.value) || 0)} style={{ borderColor: "var(--heal-card-border)" }} />
+              <input
+                type="number"
+                inputMode="numeric"
+                min={100}
+                max={250}
+                className="w-full rounded-xl border p-2 text-sm"
+                value={heightCm ?? ""}
+                placeholder="如 170"
+                onChange={(e) => setHeightCm(e.target.value === "" ? null : Number(e.target.value))}
+                style={{ borderColor: "var(--heal-card-border)" }}
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs">体重（kg）</label>
-              <input type="number" min={25} max={200} className="w-full rounded-xl border p-2 text-sm" value={weightKg} onChange={(e) => setWeightKg(Number(e.target.value) || 0)} style={{ borderColor: "var(--heal-card-border)" }} />
+              <input
+                type="number"
+                inputMode="decimal"
+                min={25}
+                max={200}
+                className="w-full rounded-xl border p-2 text-sm"
+                value={weightKg ?? ""}
+                placeholder="如 60.5"
+                onChange={(e) => setWeightKg(e.target.value === "" ? null : Number(e.target.value))}
+                style={{ borderColor: "var(--heal-card-border)" }}
+              />
             </div>
           </div>
 
