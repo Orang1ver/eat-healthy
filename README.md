@@ -40,14 +40,17 @@
 
 ### 📱 手机独立运行（纯前端版）
 
-本项目已于纯前端化改造：**没有服务端、没有 API 路由**，数据存浏览器 localStorage，AI 由浏览器直接请求 DeepSeek。因此可以完整静态导出，部署后手机上独立使用，不依赖电脑。
+**已部署上线：<https://orang1ver.github.io/eat-healthy/>** —— 手机浏览器打开后「添加到主屏幕」即为全屏 App，不依赖电脑。
+
+本项目已于纯前端化改造：**没有服务端、没有 API 路由**，数据存浏览器 localStorage，AI 由浏览器直接请求 DeepSeek。因此可以完整静态导出，部署后手机上独立使用。
 
 - 构建静态站点：`npm run build` → 产物在 `out/`（约 1MB）
 - 把 `out/` 丢到任意静态托管（GitHub Pages / Cloudflare Pages / Netlify 等）即可
-- 部署到子路径时：`BASE_PATH=/仓库名 npm run build`（Windows 用 `set BASE_PATH=/仓库名 && npm run build`）
+- 部署到子路径时：`BASE_PATH=/仓库名 npm run build`（Windows Git Bash 需加 `MSYS_NO_PATHCONV=1`）
 - 手机上用浏览器打开后「添加到主屏幕」，即为全屏 App，支持离线打开界面（内置 Service Worker）
 - 首次使用：⚙️ 填 DeepSeek Key → 健康小屋填档案 → 菜单库截图导入
 
+> 重新部署步骤、踩坑记录（`.nojekyll`、`sw.js`）与常见问题见 **[DEPLOY.md](./DEPLOY.md)**。
 > 桌面端仍然可以 `npm run dev` 或双击 `启动.bat` 本地使用，效果一致。
 
 ---
