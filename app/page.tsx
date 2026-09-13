@@ -7,6 +7,7 @@ import { SettingsDialog } from "./components/SettingsDialog";
 import { IOSInstallHint } from "./components/IOSInstallHint";
 import { RecommendCard } from "./components/RecommendCard";
 import { SaveMealDialog } from "./components/SaveMealDialog";
+import { ManualLogDialog } from "./components/ManualLogDialog";
 import { TakeoutCard } from "./components/TakeoutCard";
 import { recommend, takeoutRecommend } from "./lib/ai";
 import { getDisabledTags } from "./lib/mutualExclusion";
@@ -47,6 +48,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveTarget, setSaveTarget] = useState<TakeoutPick | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   // 今日进度概览（有健康档案时才显示）
   const [today, setToday] = useState<{ water: number; waterTarget: number; steps: number; stepsTarget: number } | null>(null);
@@ -425,7 +427,23 @@ export default function Home() {
             >
               {loading ? "生成中…" : channel === "自己做" ? "✨ 生成推荐" : "✨ 帮我选外卖"}
             </button>
+            {channel === "自己做" && (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => setManualOpen(true)}
+                className="heal-btn heal-btn-ghost whitespace-nowrap px-3 py-2 text-sm"
+                title="已经吃过了？选好食材直接记下来"
+              >
+                📝 记一餐
+              </button>
+            )}
           </div>
+          {channel === "自己做" && (
+            <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+              已经吃过了不用生成推荐——点「📝 记一餐」，选好食材让 AI 起个名字直接记下来。
+            </p>
+          )}
           {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
         </div>
 
@@ -449,6 +467,14 @@ export default function Home() {
       </div>
 
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ManualLogDialog
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        ingredients={selectedIngredients}
+        flavorTags={flavorTags}
+        note={note}
+        goal={goal}
+      />
       <SaveMealDialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} onConfirm={confirmSave} />
     </main>
   );
