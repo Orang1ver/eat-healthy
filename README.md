@@ -38,7 +38,21 @@
 - 每次生成本周分析后，AI 自动维护 Markdown 格式的饮食习惯笔记
 - 后续推荐时自动注入，实现越用越懂你的个性化效果
 
-### 🍱 我的食堂/外卖菜单库（v1 结合版新增）
+### 📱 手机独立运行（纯前端版）
+
+本项目已于纯前端化改造：**没有服务端、没有 API 路由**，数据存浏览器 localStorage，AI 由浏览器直接请求 DeepSeek。因此可以完整静态导出，部署后手机上独立使用，不依赖电脑。
+
+- 构建静态站点：`npm run build` → 产物在 `out/`（约 1MB）
+- 把 `out/` 丢到任意静态托管（GitHub Pages / Cloudflare Pages / Netlify 等）即可
+- 部署到子路径时：`BASE_PATH=/仓库名 npm run build`（Windows 用 `set BASE_PATH=/仓库名 && npm run build`）
+- 手机上用浏览器打开后「添加到主屏幕」，即为全屏 App，支持离线打开界面（内置 Service Worker）
+- 首次使用：⚙️ 填 DeepSeek Key → 健康小屋填档案 → 菜单库截图导入
+
+> 桌面端仍然可以 `npm run dev` 或双击 `启动.bat` 本地使用，效果一致。
+
+---
+
+### 🍱 我的食堂/外卖菜单库
 - **截图导入**：在外卖 App/食堂小程序里把菜单页截图，粘贴或选图，AI 视觉模型（DeepSeek V4.1 Flash，同 Key）认出菜名+价格，再自动补全分类/口味/忌口标签入库
 - **文字导入**：流水账式描述学校食堂，AI 拆成结构化菜品
 - 手动添加、按商家分组浏览、单个删除、恢复示例库；同商家同名自动去重
@@ -61,9 +75,10 @@
 | 框架 | Next.js 16 (App Router, Turbopack) |
 | 语言 | TypeScript 5 |
 | 样式 | Tailwind CSS 4 + CSS 变量治愈主题 |
-| AI | DeepSeek API（OpenAI SDK 兼容） |
-| 数据 | localStorage（无后端数据库） |
-| PWA | next-pwa |
+| AI | DeepSeek API（浏览器直连，`deepseek-chat` 文本 + `deepseek-flash` 视觉） |
+| 数据 | localStorage（无后端、无数据库） |
+| PWA | 自研轻量 Service Worker + manifest（离线可开，支持加到主屏） |
+| 部署 | 静态导出（`output: export`），产物 `out/` 可直接托管 |
 
 ---
 
@@ -82,28 +97,20 @@ cd ai-recipe-finder
 npm install
 ```
 
-### 3. 配置环境变量（可选）
+### 3. 配置 API Key
+
+本版本**不需要环境变量**。启动后点页面右上角 ⚙️ 填入 DeepSeek API Key 即可（存在浏览器 localStorage，由浏览器直接请求 DeepSeek）。
+
+若需部署到子路径或更换模型名，参考 `.env.example` 里的 `BASE_PATH` 等说明。
+
+### 4. 启动
 
 ```bash
-cp .env.example .env.local
+npm run dev        # 开发模式，打开 http://localhost:3000
+npm run build      # 构建静态站点，产物在 out/
 ```
 
-编辑 `.env.local`：
-
-```env
-# 服务器端默认 Key，也可在页面右上角 ⚙️ 设置里填写（优先级更高）
-DEEPSEEK_API_KEY=sk-your-key-here
-```
-
-> 也可以不配置环境变量，直接在页面 ⚙️ 设置里填写 DeepSeek API Key，Key 只存在你本地浏览器的 localStorage 中。
-
-### 4. 启动开发服务器
-
-```bash
-npm run dev
-```
-
-打开 [http://localhost:3000](http://localhost:3000) 即可使用。
+Windows 上也可以直接双击 `启动.bat`（自动起服务并打开浏览器）。
 
 ---
 
@@ -111,7 +118,9 @@ npm run dev
 
 1. 前往 [platform.deepseek.com](https://platform.deepseek.com)
 2. 注册并创建 API Key
-3. 在页面右上角 ⚙️ 设置中填入，或写入 `.env.local`
+3. 在页面右上角 ⚙️ 设置中填入
+
+> 推荐与截图识别用的是同一个 Key（`deepseek-chat` / `deepseek-flash`），无需申请第二个。
 
 ---
 
@@ -120,22 +129,24 @@ npm run dev
 ```
 app/
 ├── page.tsx               # 首页（推荐入口）
+├── health/page.tsx        # 健康小屋（档案 + 每日打卡）
+├── takeout/page.tsx       # 我的食堂/外卖菜单库
 ├── weekly/page.tsx        # 本周饮食回顾
-├── api/
-│   ├── recommend/         # 自己做菜品推荐
-│   ├── takeout-recommend/ # 外卖推荐
-│   ├── weekly-insight/    # 本周饮食 AI 点评
-│   ├── update-profile/    # 用户饮食档案更新
-│   └── parse-goal/        # 饮食目标语义解析
 ├── components/            # UI 组件
 └── lib/
+    ├── deepseek.ts        # 浏览器直连 DeepSeek（文本/视觉统一入口）
+    ├── ai.ts              # 各业务 AI 封装（推荐/外卖/周报/菜单导入）
+    ├── health.ts          # 健康计算（BMR/TDEE/喝水/步数/BMI）
     ├── tags.ts            # 标签单一事实来源 + isSeasoning()
     ├── storage.ts         # localStorage CRUD + 数据迁移
     ├── prompts.ts         # 所有 AI Prompt 构建函数
     ├── types.ts           # 核心类型定义
     └── date.ts            # 日期工具（周视图 / 时间段推导）
+public/
+├── sw.js                  # Service Worker（离线缓存）
+└── icons/                 # PWA 图标
 data/
-└── takeoutMock.json       # 外卖数据库（可手动编辑扩充）
+└── takeoutMock.json       # 示例菜单库种子
 ```
 
 ---
@@ -158,8 +169,9 @@ data/
 ## 📝 数据说明
 
 - **所有数据存储在浏览器 localStorage**，不上传任何服务器，完全本地化
-- API Key 同样仅存本地，不经过任何中间层
-- 外卖数据库位于 `data/takeoutMock.json`，可自由编辑扩充
+- API Key 同样仅存本地，由浏览器直接请求 DeepSeek，不经过任何中间层（纯前端版本连自己的后端都没有）
+- **数据不跨设备同步**：手机和电脑浏览器各自独立，换设备需重新导入
+- 示例菜单库位于 `data/takeoutMock.json`（仅作为初始种子，导入后以本地库为准）
 
 ---
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TagChips } from "../components/TagChips";
-import { apiKeyHeaders } from "../lib/apiKeys";
+import { importTakeout } from "../lib/ai";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
 import { loadTakeoutDishes, addTakeoutDishes, removeTakeoutDish, resetTakeoutDishes } from "../lib/storage";
 import type { TakeoutDish } from "../lib/types";
@@ -71,16 +71,10 @@ export default function TakeoutLibraryPage() {
     setImportMsg("");
     setImportErr("");
     try {
-      const res = await fetch("/api/import-takeout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({ text: importText, images: shots, merchant: shotMerchant.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "导入失败");
-      const { added, list } = addTakeoutDishes(data.dishes);
+      const dishes = await importTakeout({ text: importText, images: shots, merchant: shotMerchant.trim() });
+      const { added, list } = addTakeoutDishes(dishes);
       setDishes(list);
-      setImportMsg(`识别出 ${data.dishes.length} 道菜，新加入 ${added} 道${data.dishes.length - added > 0 ? `（${data.dishes.length - added} 道已存在）` : ""} ✅`);
+      setImportMsg(`识别出 ${dishes.length} 道菜，新加入 ${added} 道${dishes.length - added > 0 ? `（${dishes.length - added} 道已存在）` : ""} ✅`);
       setImportText("");
       setShots([]);
     } catch (e: any) {

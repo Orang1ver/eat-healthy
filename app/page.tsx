@@ -6,7 +6,7 @@ import { SettingsDialog } from "./components/SettingsDialog";
 import { RecommendCard } from "./components/RecommendCard";
 import { SaveMealDialog } from "./components/SaveMealDialog";
 import { TakeoutCard } from "./components/TakeoutCard";
-import { apiKeyHeaders } from "./lib/apiKeys";
+import { recommend, takeoutRecommend } from "./lib/ai";
 import { getDisabledTags } from "./lib/mutualExclusion";
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./lib/tags";
 import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
@@ -80,34 +80,28 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({
-          ingredients: selectedIngredients,
-          onlyPantry,
-          flavorTags,
-          avoidTags,
-          note,
-          methodTags,
-          portionPreset,
-          dishCount: portionPreset === "自定义" ? dishCount : undefined,
-          wantDessert,
-          goal,
-          feedback,
-          userProfile: loadUserProfile()?.content,
-          healthContext: healthContext(),
-          recentMeals: loadMealRecords().slice(0, 10).map((m) => ({
-            date: m.date,
-            time: m.time,
-            channel: m.channel,
-            dishes: m.dishes.map((d) => ({ name: d.name, ingredients: d.ingredients.map((i) => i.label) })),
-          })),
-          weeklyInsight: loadWeeklyInsight(weekStartOf(todayISO()))?.reply,
-        }),
+      const data = await recommend({
+        ingredients: selectedIngredients,
+        onlyPantry,
+        flavorTags,
+        avoidTags,
+        note,
+        methodTags,
+        portionPreset,
+        dishCount: portionPreset === "自定义" ? dishCount : undefined,
+        wantDessert,
+        goal,
+        feedback,
+        userProfile: loadUserProfile()?.content,
+        healthContext: healthContext(),
+        recentMeals: loadMealRecords().slice(0, 10).map((m) => ({
+          date: m.date,
+          time: m.time,
+          channel: m.channel,
+          dishes: m.dishes.map((d) => ({ name: d.name, ingredients: d.ingredients.map((i) => i.label) })),
+        })),
+        weeklyInsight: loadWeeklyInsight(weekStartOf(todayISO()))?.reply,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "生成失败");
       setResult(data);
     } catch (e: any) {
       setError(e.message || String(e));
@@ -120,26 +114,23 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/takeout-recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({
-          flavorTags, avoidTags, note, goal,
-          takeoutDb: loadTakeoutDishes(),
-          userProfile: loadUserProfile()?.content,
-          healthContext: healthContext(),
-          recentMeals: loadMealRecords().slice(0, 10).map((m) => ({
-            date: m.date,
-            time: m.time,
-            channel: m.channel,
-            dishes: m.dishes.map((d) => ({ name: d.name, ingredients: d.ingredients.map((i) => i.label) })),
-          })),
-          weeklyInsight: loadWeeklyInsight(weekStartOf(todayISO()))?.reply,
-        }),
+      const picks = await takeoutRecommend({
+        flavorTags,
+        avoidTags,
+        note,
+        goal,
+        takeoutDb: loadTakeoutDishes(),
+        userProfile: loadUserProfile()?.content,
+        healthContext: healthContext(),
+        recentMeals: loadMealRecords().slice(0, 10).map((m) => ({
+          date: m.date,
+          time: m.time,
+          channel: m.channel,
+          dishes: m.dishes.map((d) => ({ name: d.name, ingredients: d.ingredients.map((i) => i.label) })),
+        })),
+        weeklyInsight: loadWeeklyInsight(weekStartOf(todayISO()))?.reply,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "生成失败");
-      setTakeoutPicks(data.picks || []);
+      setTakeoutPicks(picks);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
