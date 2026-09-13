@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { todayISO, weekStartOf, addDays, WEEKDAY_LABELS, weekDates } from "../lib/date";
 import { loadHealthProfile, loadCheckin, saveCheckin, saveHealthProfile, getCheckinsInWeek, loadRewards, saveRewards } from "../lib/storage";
 import { ACTIVITY_LEVELS, HEALTH_GOALS, calcDailyTargets } from "../lib/health";
@@ -14,7 +15,10 @@ import {
   nextBadge,
   settleCheckin,
 } from "../lib/rewards";
-import { RewardDialog } from "../components/RewardDialog";
+// 懒加载：motion + 彩带库只在庆祝弹窗打开时才下载，不拖慢健康页首屏
+const RewardDialog = dynamic(() => import("../components/RewardDialog").then((m) => m.RewardDialog), {
+  ssr: false,
+});
 import {
   CURRENT_STEP_SOURCE,
   CUP_ML,
