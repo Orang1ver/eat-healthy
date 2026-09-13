@@ -15,6 +15,10 @@ export default function TakeoutLibraryPage() {
   const [importMsg, setImportMsg] = useState("");
   const [importErr, setImportErr] = useState("");
 
+  // 截图导入
+  const [shots, setShots] = useState<string[]>([]);
+  const [shotMerchant, setShotMerchant] = useState("");
+
   // 手动添加表单
   const [mRestaurant, setMRestaurant] = useState("");
   const [mName, setMName] = useState("");
@@ -27,6 +31,30 @@ export default function TakeoutLibraryPage() {
     setDishes(loadTakeoutDishes());
   }, []);
 
+  /** 压缩到宽 1600 的 JPEG，控制上传体积 */
+  async function fileToDataUrl(file: File): Promise<string> {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / bitmap.width);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  }
+
+  async function addShotFiles(files: FileList | File[]) {
+    const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (imgs.length === 0) return;
+    setImportErr("");
+    try {
+      const dataUrls = await Promise.all(imgs.slice(0, 5).map(fileToDataUrl));
+      setShots((prev) => [...prev, ...dataUrls].slice(0, 5));
+      if (imgs.length > 5) setImportMsg("一次最多 5 张，超出部分已忽略");
+    } catch {
+      setImportErr("图片读取失败，换一张试试");
+    }
+  }
+
   const grouped = useMemo(() => {
     const map = new Map<string, TakeoutDish[]>();
     for (const d of dishes) {
@@ -38,7 +66,7 @@ export default function TakeoutLibraryPage() {
   }, [dishes]);
 
   async function importFromText() {
-    if (!importText.trim()) return;
+    if (!importText.trim() && shots.length === 0) return;
     setImporting(true);
     setImportMsg("");
     setImportErr("");
@@ -46,7 +74,7 @@ export default function TakeoutLibraryPage() {
       const res = await fetch("/api/import-takeout", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({ text: importText }),
+        body: JSON.stringify({ text: importText, images: shots, merchant: shotMerchant.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "导入失败");
@@ -54,6 +82,7 @@ export default function TakeoutLibraryPage() {
       setDishes(list);
       setImportMsg(`识别出 ${data.dishes.length} 道菜，新加入 ${added} 道${data.dishes.length - added > 0 ? `（${data.dishes.length - added} 道已存在）` : ""} ✅`);
       setImportText("");
+      setShots([]);
     } catch (e: any) {
       setImportErr(e.message || String(e));
     } finally {
@@ -110,19 +139,77 @@ export default function TakeoutLibraryPage() {
           把你们学校食堂窗口和常点外卖告诉 AI，之后「点外卖」推荐就只会从这里面挑。共 <b>{dishes.length}</b> 道菜、{grouped.length} 个商家/窗口。
         </p>
 
-        {/* 智能导入 */}
-        <div className="heal-card mb-4 p-4">
-          <span className="mb-2 block text-sm font-medium">✨ 说一段话，AI 帮你建菜单</span>
+        {/* 智能导入：截图优先，文字补充 */}
+        <div
+          className="heal-card mb-4 p-4"
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData?.files || []);
+            if (files.length) {
+              e.preventDefault();
+              addShotFiles(files);
+            }
+          }}
+        >
+          <span className="mb-2 block text-sm font-medium">📸 截图导入（推荐）</span>
+          <p className="mb-2 text-xs leading-6" style={{ color: "var(--heal-muted)" }}>
+            在美团/饿了么/淘宝闪购等 App 里打开食堂或商家的菜单页截图，直接 <b>Ctrl+V 粘贴</b>到本页，AI 认出菜名和价格后自动建库。
+          </p>
+          <input
+            className="mb-2 w-full rounded-xl border p-2 text-sm"
+            placeholder="这家店的商家/窗口名（可选，如：一食堂·面食窗口）"
+            value={shotMerchant}
+            onChange={(e) => setShotMerchant(e.target.value)}
+            style={{ borderColor: "var(--heal-card-border)" }}
+          />
+          <label className="mb-2 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed py-5 text-center text-xs"
+            style={{ borderColor: "var(--heal-card-border)", color: "var(--heal-muted)" }}
+          >
+            <span className="text-2xl">🖼️</span>
+            点击选择截图（手机上会调起相册），最多 5 张
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) addShotFiles(e.target.files);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+          {shots.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {shots.map((s, i) => (
+                <div key={i} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s} alt={`截图${i + 1}`} className="h-20 w-20 rounded-xl object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setShots((prev) => prev.filter((_, j) => j !== i))}
+                    aria-label="移除截图"
+                    className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-white text-xs shadow"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <textarea
             className="mb-2 w-full rounded-2xl border p-3 text-sm leading-6"
-            rows={4}
-            placeholder={"想到什么写什么，比如：\n一食堂二楼有麻辣香锅、黄焖鸡米饭、重庆小面，都是十几块；\n一食堂三楼轻食窗口有鸡胸肉沙拉和杂粮饭；\n外卖常点华莱士和 McCarthy·麦香基，晚上还有烧烤摊。"}
+            rows={3}
+            placeholder={"（可选）再用文字补充几句，比如：\n一食堂二楼还有麻辣香锅和重庆小面，都十几块；烧烤摊晚上才开门。"}
             value={importText}
             onChange={(e) => setImportText(e.target.value)}
             style={{ borderColor: "var(--heal-card-border)" }}
           />
-          <button type="button" disabled={importing || !importText.trim()} onClick={importFromText} className="heal-btn heal-btn-primary w-full px-4 py-2.5 text-sm">
-            {importing ? "AI 整理中…" : "✨ 让 AI 整理进菜单库"}
+          <button
+            type="button"
+            disabled={importing || (!importText.trim() && shots.length === 0)}
+            onClick={importFromText}
+            className="heal-btn heal-btn-primary w-full px-4 py-2.5 text-sm"
+          >
+            {importing ? (shots.length > 0 ? "AI 看图整理中，约十几秒…" : "AI 整理中…") : "✨ 让 AI 整理进菜单库"}
           </button>
           {importMsg && <p className="mt-2 text-xs" style={{ color: "var(--heal-blue-text)" }}>{importMsg}</p>}
           {importErr && <p className="mt-2 text-xs text-rose-600">{importErr}</p>}

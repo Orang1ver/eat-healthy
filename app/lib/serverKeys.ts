@@ -5,3 +5,9 @@ export function getDeepSeekKey(req: Request): string | undefined {
 
 export const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 export const DEEPSEEK_MODEL = "deepseek-chat";
+
+/**
+ * 视觉模型（识别菜单截图用）：V4.1 Flash 起原生支持图片输入，
+ * 与文本模型同 key、同 base_url，只是 model 不同。
+ */
+export const DEEPSEEK_VISION_MODEL = process.env.DEEPSEEK_VISION_MODEL || "deepseek-flash";
