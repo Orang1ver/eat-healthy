@@ -16,9 +16,11 @@ call npm run build
 if errorlevel 1 goto fail
 
 echo.
-echo [2/3] 准备发布产物...
+echo [2/3] 准备发布产物（注入构建版本号 + .nojekyll）...
 cd out
 if not exist .nojekyll type nul > .nojekyll
+rem 用 Node 做版本号替换（PowerShell 的 Set-Content 会把 UTF-8 中文注释写成乱码）
+node -e "const fs=require('fs');const f='sw.js';const ts=new Date().toISOString().slice(0,10).replace(/-/g,'')+String(Date.now()).slice(-4);fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace('__BUILD__',ts),'utf8');console.log('sw.js 版本号: recipe-'+ts);"
 if not exist .git git init -b gh-pages -q
 git add -A
 git commit -q -m "deploy: %date% %time%" 2>nul

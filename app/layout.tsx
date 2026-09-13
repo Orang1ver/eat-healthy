@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppInit } from "./components/AppInit";
+import { UpdateBanner } from "./components/UpdateBanner";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -52,6 +53,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <AppInit />
+        <UpdateBanner />
         {children}
       </body>
     </html>
