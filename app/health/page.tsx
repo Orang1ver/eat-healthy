@@ -3,8 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { todayISO, weekStartOf, addDays, WEEKDAY_LABELS, weekDates } from "../lib/date";
-import { loadHealthProfile, loadCheckin, saveCheckin, saveHealthProfile, getCheckinsInWeek } from "../lib/storage";
+import { loadHealthProfile, loadCheckin, saveCheckin, saveHealthProfile, getCheckinsInWeek, loadRewards, saveRewards } from "../lib/storage";
 import { ACTIVITY_LEVELS, HEALTH_GOALS, calcDailyTargets } from "../lib/health";
+import {
+  BADGES,
+  EMPTY_REWARDS,
+  calcCurrentStreak,
+  calcMaxStreak,
+  evaluateCheckin,
+  nextBadge,
+  settleCheckin,
+} from "../lib/rewards";
+import { RewardDialog } from "../components/RewardDialog";
 import {
   CURRENT_STEP_SOURCE,
   CUP_ML,
@@ -18,7 +28,7 @@ import {
   stepsToKm,
   waterProgressText,
 } from "../lib/steps";
-import type { ActivityLevel, DailyCheckin, HealthGoal, HealthProfile, Sex } from "../lib/types";
+import type { ActivityLevel, DailyCheckin, HealthGoal, HealthProfile, RewardState, Sex } from "../lib/types";
 
 const MOODS: { key: NonNullable<DailyCheckin["mood"]>; emoji: string }[] = [
   { key: "好", emoji: "😊" },
@@ -30,6 +40,8 @@ export default function HealthPage() {
   const [profile, setProfile] = useState<HealthProfile | null>(null);
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()));
+  const [rewards, setRewards] = useState<RewardState>(EMPTY_REWARDS);
+  const [celebration, setCelebration] = useState<{ streak: number; badges: typeof BADGES } | null>(null);
 
   // 档案表单。数字字段用 null 表示"已删空未填"，输入框才能清空（否则一删就变成 0）
   const [sex, setSex] = useState<Sex>("男");
@@ -56,11 +68,14 @@ export default function HealthPage() {
       setConditions(p.conditions);
     }
     setCheckin(loadCheckin(todayISO()));
+    setRewards(loadRewards());
   }, []);
 
   const targets = useMemo(() => (profile ? calcDailyTargets(profile) : null), [profile]);
   // checkin 变化时今天那一格也要立刻点亮，所以这里不做 memo，直接每次渲染重算（只有 7 天，开销可忽略）
   const weekCheckins = getCheckinsInWeek(weekStart);
+
+  const today = todayISO();
 
   function handleSaveProfile() {
     if (age == null || heightCm == null || weightKg == null) {
@@ -75,9 +90,30 @@ export default function HealthPage() {
     setProfile(saveHealthProfile({ sex, age, heightCm, weightKg, activityLevel, goal, allergies, conditions }));
   }
 
+  /**
+   * 打卡写入的唯一入口。写入后结算奖励：
+   * 今天由「未达标」变「达标」时记录并庆祝（每天最多一次）；事后减水量不收回奖励。
+   */
   function updateCheckin(patch: Parameters<typeof saveCheckin>[1]) {
-    setCheckin(saveCheckin(todayISO(), patch));
+    const next = saveCheckin(today, patch);
+    setCheckin(next);
+
+    const completion = evaluateCheckin(next, targets);
+    if (!completion.allDone) return;
+
+    const settled = settleCheckin(loadRewards(), today);
+    saveRewards(settled.state);
+    setRewards(settled.state);
+    if (settled.firstTimeToday) {
+      setCelebration({ streak: settled.streak, badges: settled.newBadges });
+    }
   }
+
+  // 连续天数：无档案不发奖励也不显示 0 天，改成引导填档案
+  const currentStreak = calcCurrentStreak(rewards.days, today);
+  const maxStreak = calcMaxStreak(rewards.days);
+  const todayCompletion = evaluateCheckin(checkin, targets);
+  const nextB = nextBadge(rewards.badges);
 
   const water = checkin?.waterMl ?? 0;
   const steps = checkin?.steps ?? 0;
@@ -222,6 +258,68 @@ export default function HealthPage() {
           </div>
         </div>
 
+        {/* 连续打卡奖励 */}
+        <div className="heal-card mb-4 p-4">
+          <span className="mb-3 block text-sm font-medium">🔥 连续打卡</span>
+          {!profile || !targets ? (
+            <p className="text-xs leading-6" style={{ color: "var(--heal-muted)" }}>
+              先在下面填好健康档案，喝水和步数才有目标线；每天两样都达标，就能点亮连续天数、解锁徽章。
+            </p>
+          ) : (
+            <>
+              <div className="mb-3 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl p-3 text-center" style={{ background: "var(--heal-amber-50)" }}>
+                  <div className="text-2xl font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                    🔥 {currentStreak}
+                  </div>
+                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                    当前连续
+                  </div>
+                </div>
+                <div className="rounded-2xl p-3 text-center" style={{ background: "var(--heal-blue-50)" }}>
+                  <div className="text-2xl font-medium" style={{ color: "var(--heal-blue-text)" }}>
+                    ⭐ {maxStreak}
+                  </div>
+                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                    历史最长
+                  </div>
+                </div>
+              </div>
+
+              <p className="mb-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                {todayCompletion.allDone
+                  ? "今天已完成 ✅ 明天继续，别断签哦"
+                  : `今天还差：${!todayCompletion.waterDone ? "喝水 " : ""}${!todayCompletion.stepsDone ? "步数" : ""}（两项都达标才算 1 天）`}
+              </p>
+
+              {/* 徽章墙 */}
+              <div className="grid grid-cols-3 gap-2">
+                {BADGES.map((b) => {
+                  const owned = !!rewards.badges[b.id];
+                  return (
+                    <div
+                      key={b.id}
+                      className="rounded-xl p-2 text-center"
+                      style={{
+                        background: owned ? "var(--heal-amber-50)" : "var(--heal-blue-50)",
+                        opacity: owned ? 1 : 0.55,
+                      }}
+                    >
+                      <div className="text-xl">{b.emoji}</div>
+                      <div className="text-[10px] font-medium" style={{ color: owned ? "var(--heal-amber-deep)" : "var(--heal-muted)" }}>
+                        {b.label}
+                      </div>
+                      <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                        {owned ? "已达成" : nextB && nextB.id === b.id ? `还差 ${Math.max(0, b.days - maxStreak)} 天` : `${b.days} 天`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
         {/* 本周打卡一览 */}
         <div className="heal-card mb-4 p-4">
           <div className="mb-2 flex items-center justify-between">
@@ -240,22 +338,29 @@ export default function HealthPage() {
               const c = weekCheckins.find((x) => x.date === d);
               const okWater = targets && c && c.waterMl >= targets.waterTarget;
               const okSteps = targets && c && c.steps >= targets.stepsTarget;
+              const allDone = !!(okWater && okSteps);
               return (
                 <div key={d} className="rounded-xl px-1 py-2" style={{ background: "var(--heal-blue-50)" }}>
                   <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
                     {WEEKDAY_LABELS[i]}
                   </div>
                   <div className="mt-1 text-sm leading-none">
-                    {okWater ? "💧" : ""}
-                    {okSteps ? "🚶" : ""}
-                    {!okWater && !okSteps ? <span className="text-[10px]" style={{ color: "var(--heal-card-border)" }}>·</span> : ""}
+                    {allDone ? (
+                      <span title="两项都达标">✅</span>
+                    ) : (
+                      <>
+                        {okWater ? "💧" : ""}
+                        {okSteps ? "🚶" : ""}
+                        {!okWater && !okSteps ? <span className="text-[10px]" style={{ color: "var(--heal-card-border)" }}>·</span> : ""}
+                      </>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
           <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
-            💧 当天喝够水 · 🚶 当天走够步数，都达标就会点亮
+            💧 喝够水 · 🚶 走够步 · ✅ 两样都达标（计入连续天数）
           </p>
         </div>
 
@@ -386,6 +491,13 @@ export default function HealthPage() {
           </p>
         </div>
       </div>
+
+      <RewardDialog
+        open={!!celebration}
+        streak={celebration?.streak ?? 0}
+        newBadges={celebration?.badges ?? []}
+        onClose={() => setCelebration(null)}
+      />
     </main>
   );
 }

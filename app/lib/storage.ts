@@ -6,11 +6,13 @@ import type {
   DailyCheckin,
   HealthProfile,
   MealRecord,
+  RewardState,
   TakeoutDish,
   UserProfile,
   WeeklyInsight,
 } from "./types";
 import { approxTimeForSlot, mealSlotFromTime, weekStartOf } from "./date";
+import { normalizeRewards } from "./rewards";
 
 const KEYS = {
   ingredients: "recipe.commonIngredients.v1",
@@ -20,6 +22,7 @@ const KEYS = {
   takeoutMock: "recipe.takeoutMock.v2",
   healthProfile: "recipe.healthProfile.v1",
   dailyCheckins: "recipe.dailyCheckins.v1",
+  rewards: "recipe.rewards.v1",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -212,4 +215,16 @@ export function getCheckinsInWeek(weekStartISO: string): DailyCheckin[] {
   return Object.values(all)
     .filter((c) => weekStartOf(c.date) === weekStartISO)
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ---------- 打卡奖励 ----------
+
+export function loadRewards(): RewardState {
+  const raw = read<unknown>(KEYS.rewards, null);
+  // 归一化放在 rewards.ts 里，避免这里依赖太多
+  return normalizeRewards(raw);
+}
+
+export function saveRewards(state: RewardState) {
+  write(KEYS.rewards, state);
 }

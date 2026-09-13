@@ -14,6 +14,8 @@ import { getDisabledTags } from "./lib/mutualExclusion";
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./lib/tags";
 import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
 import { buildHealthContext, calcDailyTargets } from "./lib/health";
+import { loadRewards } from "./lib/storage";
+import { calcCurrentStreak } from "./lib/rewards";
 import { progressOf } from "./lib/steps";
 import { todayISO, weekStartOf } from "./lib/date";
 import type { CommonIngredient, Dish, TakeoutDish } from "./lib/types";
@@ -52,6 +54,7 @@ export default function Home() {
 
   // 今日进度概览（有健康档案时才显示）
   const [today, setToday] = useState<{ water: number; waterTarget: number; steps: number; stepsTarget: number } | null>(null);
+  const [streakText, setStreakText] = useState("");
 
   useEffect(() => {
     setCommonIngredients(loadCommonIngredients());
@@ -65,6 +68,10 @@ export default function Home() {
         steps: c?.steps ?? 0,
         stepsTarget: t.stepsTarget,
       });
+      // 连续天数：今天已达标就从今天数，否则从昨天数（避免白天打开显示 0 天）
+      const rewards = loadRewards();
+      const n = calcCurrentStreak(rewards.days, todayISO());
+      if (n > 0) setStreakText(`🔥 连续 ${n} 天`);
     }
   }, []);
 
@@ -236,7 +243,10 @@ export default function Home() {
         {today && (
           <Link href="/health" className="heal-card mb-4 flex items-center justify-between gap-3 p-3">
             <div className="min-w-0 flex-1">
-              <div className="mb-1.5 text-xs font-medium">今日进度</div>
+              <div className="mb-1.5 flex items-center justify-between text-xs font-medium">
+                <span>今日进度</span>
+                {streakText && <span style={{ color: "var(--heal-amber-deep)" }}>{streakText}</span>}
+              </div>
               <div className="flex flex-col gap-1.5">
                 {[
                   {
