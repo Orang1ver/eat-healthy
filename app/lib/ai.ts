@@ -109,56 +109,108 @@ export async function updateProfile(input: {
 // ---------- 菜单库导入（文字 / 截图） ----------
 
 type ParsedMenuDish = { name: string; price?: number };
+/** 一张截图里的店铺 + 它的菜品 */
+type MerchantGroup = { merchant: string; dishes: ParsedMenuDish[] };
 
-export async function importTakeout(input: {
-  text: string;
-  images: string[];
-  merchant?: string;
-}): Promise<Omit<TakeoutDish, "id">[]> {
-  let sourceText = input.text.trim();
-
-  if (input.images.length > 0) {
-    const parsed = await visionJSON<{ dishes?: ParsedMenuDish[] }>(
-      `你是菜单识别助手。逐张查看这些外卖/食堂菜单截图，提取所有可以下单的菜品。
-
-规则：
-- 只要真实可点的菜品（含套餐/主食/小吃/饮品），忽略：分类标题（如"招牌推荐""热销榜"）、月销量/评分、优惠券满减、已售罄商品、加料/辣度等规格选项、店铺公告。
-- price 填当前售价的数字（元），图里没有价格就不要 price 字段。
-- 同名菜品只保留一次。看不清的菜名跳过，不要猜。
-
-返回严格 JSON，不要多余文字：
-{"dishes":[{"name":"黄焖鸡米饭","price":15},{"name":"酸辣土豆丝"}]}`,
-      input.images,
-    );
-    const list = (parsed.dishes || []).filter((d) => typeof d?.name === "string" && d.name.trim());
-    if (list.length === 0) throw new Error("截图里没认出菜品，确认这是菜单页且文字清晰");
-
-    const listText = `${input.merchant ? `商家/窗口：${input.merchant}\n` : ""}识别出的菜品及价格：\n${list
-      .map((d) => `${d.name}${d.price != null ? `（¥${d.price}）` : ""}`)
-      .join("、")}`;
-    sourceText = sourceText ? `${sourceText}\n${listText}` : listText;
-  }
-
-  if (!sourceText) throw new Error("描述内容不能为空");
-
-  const prompt = buildImportTakeoutPrompt({
-    text: sourceText,
-    flavorTagLabels: FLAVOR_TAGS.map((t) => t.label),
-    avoidTagLabels: AVOID_TAGS.map((t) => t.label),
-  });
-  const data = await chatJSON<{ dishes?: Partial<TakeoutDish>[] }>(prompt, 0.2);
-
-  const dishes = (data.dishes || [])
+/** 把 AI 返回的菜品条目清洗成菜单库记录 */
+function toTakeoutDishes(rows: Partial<TakeoutDish>[] | undefined, fallbackMerchant: string): Omit<TakeoutDish, "id">[] {
+  return (rows || [])
     .filter((d) => typeof d?.name === "string" && d.name.trim())
     .map((d) => ({
-      restaurant: String(d.restaurant || input.merchant || "学校食堂"),
+      restaurant: String(d.restaurant || fallbackMerchant || "学校食堂"),
       name: String(d.name).trim(),
       category: String(d.category || "其他"),
       priceRange: d.priceRange ? String(d.priceRange) : undefined,
       flavorTags: strArr(d.flavorTags),
       avoidConflicts: strArr(d.avoidConflicts),
     }));
+}
 
+/**
+ * 视觉识别：从菜单截图里同时读出「店铺名」和「菜品+价格」。
+ * 店铺名通常在页面顶部，之前漏了这一项，导致所有菜都被归到"学校食堂"。
+ * 按店铺分组返回，这样一次粘贴多个店铺的截图也能正确归属。
+ */
+async function parseMenuImages(images: string[]): Promise<MerchantGroup[]> {
+  const parsed = await visionJSON<{
+    merchants?: { merchant?: string; dishes?: ParsedMenuDish[] }[];
+    dishes?: ParsedMenuDish[]; // 兼容只返回扁平列表的情况
+  }>(
+    `你是菜单识别助手。逐张查看这些外卖/食堂菜单截图，同时读出**店铺信息**和**可以下单的菜品**。
+
+规则：
+- merchant：这张图对应的店铺名 / 食堂窗口名，通常在页面顶部（如"杨国福麻辣烫(五道口店)"）。是食堂菜单牌没写店名时，填窗口名（如"一食堂二楼·麻辣香锅"）。实在看不出来就填空字符串，不要编造。
+- dishes：只要真实可点的菜品（含套餐/主食/小吃/饮品）。忽略：分类标题（如"招牌推荐""热销榜"）、月销量/评分、优惠券满减、已售罄商品、加料/辣度等规格选项、店铺公告。
+- price 填当前售价的数字（元），图里没有价格就不要 price 字段。
+- 同名菜品只保留一次。看不清的菜名跳过，不要猜。
+- 不同截图属于不同店铺时，分开成多个 merchants 条目；同一店铺的多张截图合并为一个。
+
+返回严格 JSON，不要多余文字：
+{"merchants":[{"merchant":"杨国福麻辣烫(五道口店)","dishes":[{"name":"招牌麻辣烫","price":18},{"name":"酸辣粉","price":12}]}]}`,
+    images,
+  );
+
+  const valid = (arr: ParsedMenuDish[] | undefined) =>
+    (arr || []).filter((d) => typeof d?.name === "string" && d.name.trim());
+
+  if (Array.isArray(parsed.merchants) && parsed.merchants.length > 0) {
+    return parsed.merchants
+      .map((g) => ({ merchant: String(g?.merchant || "").trim(), dishes: valid(g?.dishes) }))
+      .filter((g) => g.dishes.length > 0);
+  }
+  // 兼容：模型只返回了扁平 dishes
+  const flat = valid(parsed.dishes);
+  return flat.length > 0 ? [{ merchant: "", dishes: flat }] : [];
+}
+
+/** 用文字（截图识别结果 / 用户流水账描述）让文本模型补全分类、口味、忌口标签 */
+async function fillDishTags(text: string): Promise<Partial<TakeoutDish>[]> {
+  const prompt = buildImportTakeoutPrompt({
+    text,
+    flavorTagLabels: FLAVOR_TAGS.map((t) => t.label),
+    avoidTagLabels: AVOID_TAGS.map((t) => t.label),
+  });
+  const data = await chatJSON<{ dishes?: Partial<TakeoutDish>[] }>(prompt, 0.2);
+  return data.dishes || [];
+}
+
+export async function importTakeout(input: {
+  text: string;
+  images: string[];
+  merchant?: string;
+}): Promise<Omit<TakeoutDish, "id">[]> {
+  const typedMerchant = (input.merchant || "").trim();
+  const note = input.text.trim();
+
+  // 有截图：先用视觉模型读出「店铺 + 菜品」，再按店铺逐组补标签
+  if (input.images.length > 0) {
+    const groups = await parseMenuImages(input.images);
+    if (groups.length === 0) throw new Error("截图里没认出菜品，确认这是菜单页且文字清晰");
+
+    const dishes: Omit<TakeoutDish, "id">[] = [];
+    for (const g of groups) {
+      // 用户手填的商家优先（比识别更准），其次用截图里读到的
+      const merchant = typedMerchant || g.merchant;
+      const listText = `${merchant ? `商家/窗口：${merchant}\n` : ""}识别出的菜品及价格：\n${g.dishes
+        .map((d) => `${d.name}${d.price != null ? `（¥${d.price}）` : ""}`)
+        .join("、")}`;
+      const rows = await fillDishTags(note ? `${note}\n${listText}` : listText);
+      // 商家归属以截图/手填为准，不采信文本模型的猜测
+      const normalized = toTakeoutDishes(rows, merchant || "学校食堂").map((d) => ({
+        ...d,
+        restaurant: merchant || d.restaurant,
+      }));
+      dishes.push(...normalized);
+    }
+
+    if (dishes.length === 0) throw new Error("没能整理出菜品，换个更清晰的截图试试");
+    return dishes;
+  }
+
+  // 纯文字描述：让文本模型自己拆分
+  if (!note) throw new Error("描述内容不能为空");
+  const rows = await fillDishTags(typedMerchant ? `商家/窗口：${typedMerchant}\n${note}` : note);
+  const dishes = toTakeoutDishes(rows, typedMerchant || "学校食堂");
   if (dishes.length === 0) {
     throw new Error("没能从描述里识别出菜品，试着写具体菜名，如「一食堂有黄焖鸡米饭和麻辣香锅」");
   }

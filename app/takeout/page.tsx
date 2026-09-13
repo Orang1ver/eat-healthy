@@ -74,7 +74,12 @@ export default function TakeoutLibraryPage() {
       const dishes = await importTakeout({ text: importText, images: shots, merchant: shotMerchant.trim() });
       const { added, list } = addTakeoutDishes(dishes);
       setDishes(list);
-      setImportMsg(`识别出 ${dishes.length} 道菜，新加入 ${added} 道${dishes.length - added > 0 ? `（${dishes.length - added} 道已存在）` : ""} ✅`);
+      // 把识别到的店铺列出来，方便你核对归属对不对
+      const shops = Array.from(new Set(dishes.map((d) => d.restaurant)));
+      const shopText = shops.length > 0 ? `（${shops.slice(0, 3).join("、")}${shops.length > 3 ? ` 等 ${shops.length} 家` : ""}）` : "";
+      setImportMsg(
+        `识别出 ${dishes.length} 道菜${shopText}，新加入 ${added} 道${dishes.length - added > 0 ? `（${dishes.length - added} 道已存在）` : ""} ✅`,
+      );
       setImportText("");
       setShots([]);
     } catch (e: any) {
@@ -146,11 +151,12 @@ export default function TakeoutLibraryPage() {
         >
           <span className="mb-2 block text-sm font-medium">📸 截图导入（推荐）</span>
           <p className="mb-2 text-xs leading-6" style={{ color: "var(--heal-muted)" }}>
-            在美团/饿了么/淘宝闪购等 App 里打开食堂或商家的菜单页截图，直接 <b>Ctrl+V 粘贴</b>到本页，AI 认出菜名和价格后自动建库。
+            在美团/饿了么/淘宝闪购等 App 里打开食堂或商家的菜单页截图，直接 <b>Ctrl+V 粘贴</b>到本页，AI 会自动读出<b>店铺名</b>、菜名和价格。
+            一次可以粘多张，不同店铺的截图会自动分开归属。
           </p>
           <input
             className="mb-2 w-full rounded-xl border p-2 text-sm"
-            placeholder="这家店的商家/窗口名（可选，如：一食堂·面食窗口）"
+            placeholder="商家/窗口名（可不填，AI 会自己从截图里读；填了则以你为准）"
             value={shotMerchant}
             onChange={(e) => setShotMerchant(e.target.value)}
             style={{ borderColor: "var(--heal-card-border)" }}
