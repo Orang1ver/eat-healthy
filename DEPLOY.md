@@ -109,6 +109,12 @@ AI 会自动认出菜名和价格，并补上分类/口味/忌口标签。一次
 
 # 五、改完代码怎么重新部署
 
+## 方式 A：双击 `部署.bat`（推荐）
+
+它会自动完成构建 → 准备产物 → 推送 gh-pages，约 1 分钟。完成后等 30~60 秒网站就更新了。
+
+## 方式 B：手动命令
+
 ```bash
 cd "C:/Users/StarRiver/Desktop/code/今天吃什么呀"
 
@@ -116,16 +122,19 @@ cd "C:/Users/StarRiver/Desktop/code/今天吃什么呀"
 git add -A && git commit -m "..."
 
 # 2. 用子路径构建（仓库名必须和 BASE_PATH 一致）
+#    ⚠️ 这一步会清空并重建 out/，里面的 .git 也会没掉，所以第 3 步要重新 init
 MSYS_NO_PATHCONV=1 BASE_PATH=/eat-healthy npm run build
 #   CMD/PowerShell：set BASE_PATH=/eat-healthy && npm run build
 
-# 3. 发布 out/ 到 gh-pages 分支
-cd out && git add -A && git commit -m "deploy"
+# 3. 发布 out/ 到 gh-pages 分支（每次都要重新 init）
+cd out
+touch .nojekyll
+git init -b gh-pages
+git add -A && git commit -m "deploy"
 git push --force https://github.com/Orang1ver/eat-healthy.git gh-pages
 ```
 
-> `out/` 里已有独立的 git 仓库（gh-pages 分支），第 3 步直接复用。
-> Pages 约 30~60 秒后自动重建。
+Pages 约 30~60 秒后自动重建。
 
 > **改完务必点击验证一遍**：只测路由地址是不够的——之前正是这样漏掉了一个 bug
 > （页面里用原生 `<a href="/health">` 跳转，漏掉了 basePath，部署到子路径后点击 404；
