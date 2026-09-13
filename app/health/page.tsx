@@ -5,6 +5,19 @@ import Link from "next/link";
 import { todayISO, weekStartOf, addDays, WEEKDAY_LABELS, weekDates } from "../lib/date";
 import { loadHealthProfile, loadCheckin, saveCheckin, saveHealthProfile, getCheckinsInWeek } from "../lib/storage";
 import { ACTIVITY_LEVELS, HEALTH_GOALS, calcDailyTargets } from "../lib/health";
+import {
+  CURRENT_STEP_SOURCE,
+  CUP_ML,
+  STEP_MAX,
+  STEP_PRESETS,
+  STEP_SOURCE_LABEL,
+  clampSteps,
+  mlToCups,
+  progressOf,
+  stepsProgressText,
+  stepsToKm,
+  waterProgressText,
+} from "../lib/steps";
 import type { ActivityLevel, DailyCheckin, HealthGoal, HealthProfile, Sex } from "../lib/types";
 
 const MOODS: { key: NonNullable<DailyCheckin["mood"]>; emoji: string }[] = [
@@ -66,8 +79,10 @@ export default function HealthPage() {
   const steps = checkin?.steps ?? 0;
   const waterTarget = targets?.waterTarget ?? 2000;
   const stepsTarget = targets?.stepsTarget ?? 8000;
-  const waterPct = Math.min(100, Math.round((water / waterTarget) * 100));
-  const stepsPct = Math.min(100, Math.round((steps / stepsTarget) * 100));
+  const waterProgress = progressOf(water, waterTarget);
+  const stepsProgress = progressOf(steps, stepsTarget);
+  const waterPct = waterProgress.pct;
+  const stepsPct = stepsProgress.pct;
 
   return (
     <main className="min-h-screen p-4 md:p-8" style={{ background: "var(--heal-bg)" }}>
@@ -100,7 +115,7 @@ export default function HealthPage() {
             <div className="mb-1 flex items-baseline justify-between text-xs">
               <span>💧 喝水</span>
               <span style={{ color: "var(--heal-muted)" }}>
-                {water} / {waterTarget} ml {waterPct >= 100 ? "🎉" : ""}
+                {water} / {waterTarget} ml（约 {mlToCups(water)} 杯）
               </span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
@@ -109,15 +124,18 @@ export default function HealthPage() {
                 style={{ width: `${waterPct}%`, background: waterPct >= 100 ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
               />
             </div>
+            <p className="mt-1 text-[11px] font-medium" style={{ color: waterProgress.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
+              {waterProgressText(waterProgress)}
+            </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" onClick={() => updateCheckin({ waterMl: water + 250 })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-                +250ml
+              <button type="button" onClick={() => updateCheckin({ waterMl: water + CUP_ML })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                +1 杯(250ml)
               </button>
               <button type="button" onClick={() => updateCheckin({ waterMl: water + 500 })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
                 +500ml
               </button>
-              <button type="button" onClick={() => updateCheckin({ waterMl: Math.max(0, water - 250) })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-                -250ml
+              <button type="button" onClick={() => updateCheckin({ waterMl: Math.max(0, water - CUP_ML) })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                -1 杯
               </button>
             </div>
           </div>
@@ -126,7 +144,7 @@ export default function HealthPage() {
             <div className="mb-1 flex items-baseline justify-between text-xs">
               <span>🚶 步数</span>
               <span style={{ color: "var(--heal-muted)" }}>
-                {steps} / {stepsTarget} {stepsPct >= 100 ? "🎉" : ""}
+                {steps} / {stepsTarget} 步（约 {stepsToKm(steps)}km）· {STEP_SOURCE_LABEL[CURRENT_STEP_SOURCE]}
               </span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
@@ -135,20 +153,36 @@ export default function HealthPage() {
                 style={{ width: `${stepsPct}%`, background: stepsPct >= 100 ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
               />
             </div>
+            <p className="mt-1 text-[11px] font-medium" style={{ color: stepsProgress.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
+              {stepsProgressText(stepsProgress)}
+            </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => updateCheckin({ steps: steps + 1000 })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-                +1000 步
-              </button>
+              {STEP_PRESETS.map((n) => (
+                <button key={n} type="button" onClick={() => updateCheckin({ steps: clampSteps(steps + n) })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                  +{n}
+                </button>
+              ))}
               <input
                 type="number"
                 min={0}
-                className="w-28 rounded-full border px-3 py-1.5 text-xs"
+                max={STEP_MAX}
+                className="w-24 rounded-full border px-3 py-1.5 text-xs"
                 placeholder="直接输入"
                 value={steps || ""}
-                onChange={(e) => updateCheckin({ steps: Math.max(0, Number(e.target.value) || 0) })}
+                onChange={(e) => updateCheckin({ steps: clampSteps(Number(e.target.value)) })}
                 style={{ borderColor: "var(--heal-card-border)" }}
               />
             </div>
+            <input
+              type="range"
+              min={0}
+              max={Math.max(stepsTarget * 1.5, 10000)}
+              step={500}
+              value={steps}
+              onChange={(e) => updateCheckin({ steps: clampSteps(Number(e.target.value)) })}
+              className="mt-2 w-full"
+              aria-label="拖动调整步数"
+            />
           </div>
 
           <div className="mb-4">

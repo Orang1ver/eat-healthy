@@ -5,7 +5,10 @@ const CORE = ["./", "./health/", "./takeout/", "./weekly/"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(CORE).catch(() => {})),
+    caches.open(CACHE).then((cache) =>
+      // 逐个 add：用 addAll 的话，只要有一个路径 404，整个核心缓存都会失败且被静默吞掉
+      Promise.all(CORE.map((url) => cache.add(url).catch(() => {}))),
+    ),
   );
   self.skipWaiting();
 });
