@@ -37,9 +37,9 @@ yarn-error.log*
 .vercel
 
 # next-pwa generated
-/public/sw.js
+# 自研 Service Worker 需纳入版本管理（next-pwa 已移除）
+# /public/sw.js  <- 不要再忽略
 /public/workbox-*.js
-/public/sw.js.map
 /public/workbox-*.js.map
 
 # typescript
