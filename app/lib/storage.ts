@@ -144,6 +144,34 @@ export function seedTakeoutMockIfEmpty() {
   write(KEYS.takeoutMock, takeoutSeed as TakeoutDish[]);
 }
 
+export function saveTakeoutDishes(dishes: TakeoutDish[]) {
+  write(KEYS.takeoutMock, dishes);
+}
+
+/** 追加菜品；同商家同名视为重复，跳过。返回追加后的完整列表 */
+export function addTakeoutDishes(incoming: Omit<TakeoutDish, "id">[]): { list: TakeoutDish[]; added: number } {
+  const list = loadTakeoutDishes();
+  const seen = new Set(list.map((d) => `${d.restaurant}::${d.name}`));
+  const fresh = incoming.filter((d) => {
+    const key = `${d.restaurant}::${d.name}`;
+    if (seen.has(key) || !d.name?.trim()) return false;
+    seen.add(key);
+    return true;
+  });
+  const next = [...list, ...fresh.map((d) => ({ ...d, id: uuid() }))];
+  saveTakeoutDishes(next);
+  return { list: next, added: fresh.length };
+}
+
+export function removeTakeoutDish(id: string) {
+  saveTakeoutDishes(loadTakeoutDishes().filter((d) => d.id !== id));
+}
+
+/** 清空并恢复到项目自带的示例库 */
+export function resetTakeoutDishes() {
+  write(KEYS.takeoutMock, takeoutSeed as TakeoutDish[]);
+}
+
 // ---------- 健康档案 ----------
 
 export function loadHealthProfile(): HealthProfile | null {

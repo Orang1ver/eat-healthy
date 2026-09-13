@@ -238,6 +238,17 @@ export default function Home() {
           </button>
         </div>
 
+        {channel === "外卖" && (
+          <div className="heal-card mb-4 flex items-center justify-between p-4">
+            <span className="text-xs leading-6" style={{ color: "var(--heal-muted)" }}>
+              AI 只会从你的菜单库里挑 → 没有学校食堂的菜？去告诉它
+            </span>
+            <a href="/takeout" className="heal-btn heal-btn-feature whitespace-nowrap px-3 py-2 text-xs">
+              🍱 我的菜单库
+            </a>
+          </div>
+        )}
+
         {channel === "自己做" && (
           <div className="heal-card mb-4 p-4">
             <div className="mb-2 flex items-center justify-between">

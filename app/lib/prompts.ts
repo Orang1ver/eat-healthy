@@ -114,6 +114,38 @@ ${input.weeklyInsight ? `【本周AI饮食分析】\n${input.weeklyInsight}` : "
 }`;
 }
 
+export function buildImportTakeoutPrompt(input: {
+  text: string;
+  flavorTagLabels: string[];
+  avoidTagLabels: string[];
+}) {
+  return `你负责把用户描述的"学校食堂/外卖菜单"整理成结构化菜单库。用户可能是流水账式描述，你需要拆分出每一道具体菜品。
+
+【口味标签词表】（flavorTags 尽量从中选，可补充其他简短描述词，每个菜 1~3 个）
+${input.flavorTagLabels.join("、")}
+
+【忌口冲突标签词表】（avoidConflicts 只能从下面选，没有就给空数组）
+${input.avoidTagLabels.join("、")}
+
+【规则】
+① 只拆"具体菜品"（如：黄焖鸡米饭、麻辣香锅、番茄鸡蛋盖浇饭），不要把"一楼""面食窗口"这类场景词当菜品；
+② restaurant 填食堂名/窗口名/外卖店名（如：一食堂·麻辣烫窗口、美团·华莱士）；用户没给就写"学校食堂"或"外卖"；
+③ category 填大类（如：盖浇饭、面食、麻辣烫、轻食、快餐、饮品）；
+④ priceRange 有就填（如 ¥12-15），没有省略；
+⑤ avoidConflicts 填这个菜天然会和哪些忌口标签冲突（如：麻辣香锅→不吃辣；不需要臆造）；
+⑥ 用户描述里的模糊表述（"大概十几块"）可以转成区间。
+
+【用户描述】
+${input.text}
+
+返回严格 JSON：
+{
+  "dishes": [
+    { "restaurant": "...", "name": "...", "category": "...", "priceRange": "¥...", "flavorTags": ["..."], "avoidConflicts": [] }
+  ]
+}`;
+}
+
 export function buildWeeklyInsightPrompt(input: {
   weekRange: string;
   meals: { date: string; mealSlot: string; channel: string; dishes: { name: string; ingredients: string[] }[] }[];
