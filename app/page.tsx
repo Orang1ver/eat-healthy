@@ -411,19 +411,19 @@ export default function Home() {
 
         <div className="heal-card mb-4 p-4">
           <span className="mb-2 block text-sm font-medium">🎯 最近想达成什么饮食目标？</span>
+          <input
+            className="mb-2 w-full rounded-full border px-3 py-2 text-sm"
+            placeholder={channel === "自己做" ? "想增肌，多吃点蛋白质" : "想吃点清淡的，最近有点上火"}
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            style={{ borderColor: "var(--heal-card-border)" }}
+          />
           <div className="flex gap-2">
-            <input
-              className="flex-1 rounded-full border px-3 py-2 text-sm"
-              placeholder={channel === "自己做" ? "想增肌，多吃点蛋白质" : "想吃点清淡的，最近有点上火"}
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              style={{ borderColor: "var(--heal-card-border)" }}
-            />
             <button
               type="button"
               disabled={loading}
               onClick={() => (channel === "自己做" ? generate() : generateTakeout())}
-              className="heal-btn heal-btn-primary whitespace-nowrap px-4 py-2 text-sm"
+              className="heal-btn heal-btn-primary min-w-0 flex-1 px-4 py-2 text-sm"
             >
               {loading ? "生成中…" : channel === "自己做" ? "✨ 生成推荐" : "✨ 帮我选外卖"}
             </button>
@@ -432,7 +432,7 @@ export default function Home() {
                 type="button"
                 disabled={loading}
                 onClick={() => setManualOpen(true)}
-                className="heal-btn heal-btn-ghost whitespace-nowrap px-3 py-2 text-sm"
+                className="heal-btn heal-btn-ghost min-w-0 flex-1 px-3 py-2 text-sm"
                 title="已经吃过了？选好食材直接记下来"
               >
                 📝 记一餐
@@ -441,7 +441,7 @@ export default function Home() {
           </div>
           {channel === "自己做" && (
             <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
-              已经吃过了不用生成推荐——点「📝 记一餐」，选好食材让 AI 起个名字直接记下来。
+              已经吃过了？点「记一餐」直接记下来，不用生成推荐。
             </p>
           )}
           {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
