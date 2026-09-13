@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MealDetailDialog } from "../components/MealDetailDialog";
 import { AddMealDialog } from "../components/AddMealDialog";
-import { apiKeyHeaders } from "../lib/apiKeys";
+import { updateProfile, weeklyInsight as fetchWeeklyInsight } from "../lib/ai";
 import { addDays, formatWeekRange, todayISO, weekDates, weekStartOf, WEEKDAY_LABELS } from "../lib/date";
 import {
   getCheckinsInWeek,
@@ -42,29 +42,31 @@ export default function WeeklyPage() {
     try {
       const profile = loadHealthProfile();
       const targets = profile ? calcDailyTargets(profile) : null;
-      const res = await fetch("/api/weekly-insight", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({
-          meals,
-          weekRange: formatWeekRange(weekStart),
-          userProfile: loadUserProfile()?.content,
-          healthContext: profile ? buildHealthContext(profile, loadCheckin(todayISO()), targets) : undefined,
-          weekHealthSummary: buildWeekHealthSummary(getCheckinsInWeek(weekStart)) || undefined,
-        }),
+      const reply = await fetchWeeklyInsight({
+        meals: meals.map((m) => ({
+          date: m.date,
+          mealSlot: m.mealSlot,
+          channel: m.channel,
+          dishes: m.dishes.map((d) => ({ name: d.name, ingredients: d.ingredients.map((i) => i.label) })),
+        })),
+        weekRange: formatWeekRange(weekStart),
+        userProfile: loadUserProfile()?.content,
+        healthContext: profile ? buildHealthContext(profile, loadCheckin(todayISO()), targets) : undefined,
+        weekHealthSummary: buildWeekHealthSummary(getCheckinsInWeek(weekStart)) || undefined,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "分析失败");
-      setInsight(data.reply);
-      saveWeeklyInsight({ weekStart, reply: data.reply, generatedAt: Date.now() });
+      setInsight(reply);
+      saveWeeklyInsight({ weekStart, reply, generatedAt: Date.now() });
 
-      const profileRes = await fetch("/api/update-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...apiKeyHeaders() },
-        body: JSON.stringify({ recentMeals: meals, existingProfile: loadUserProfile()?.content }),
+      const content = await updateProfile({
+        recentMeals: meals.map((m) => ({
+          date: m.date,
+          mealSlot: m.mealSlot,
+          channel: m.channel,
+          dishes: m.dishes.map((d) => ({ name: d.name, ingredients: d.ingredients.map((i) => i.label) })),
+        })),
+        existingProfile: loadUserProfile()?.content,
       });
-      const profileData = await profileRes.json();
-      if (profileRes.ok && profileData.content) saveUserProfile(profileData.content);
+      if (content) saveUserProfile(content);
     } catch (e: any) {
       setInsight(e.message || "生成失败");
     } finally {

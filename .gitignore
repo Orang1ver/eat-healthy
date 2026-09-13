@@ -48,3 +48,6 @@ next-env.d.ts
 
 # 但保留模板文件
 !.env.example
+
+# 静态导出产物
+/out/
