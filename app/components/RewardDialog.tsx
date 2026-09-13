@@ -18,11 +18,14 @@ export function RewardDialog({
   open,
   streak,
   newBadges,
+  replay = false,
   onClose,
 }: {
   open: boolean;
   streak: number;
   newBadges: Badge[];
+  /** 回看模式：标题改为"成就回看"，徽章区显示"我的徽章"而非"解锁新徽章" */
+  replay?: boolean;
   onClose: () => void;
 }) {
   const reduced = useReducedMotion();
@@ -135,9 +138,9 @@ export function RewardDialog({
         >
           🎉
         </motion.div>
-        <h2 className="mb-1 text-base font-medium">今日打卡完成！</h2>
+        <h2 className="mb-1 text-base font-medium">{replay ? "🏅 打卡成就回看" : "今日打卡完成！"}</h2>
         <p className="mb-4 text-xs" style={{ color: "var(--heal-muted)" }}>
-          喝水 ✅ 步数 ✅ 两样都达标了
+          {replay ? "这是你坚持下来的样子" : "喝水 ✅ 步数 ✅ 两样都达标了"}
         </p>
 
         <motion.div
@@ -164,7 +167,7 @@ export function RewardDialog({
             transition={reduced ? { duration: 0.15 } : { delay: 0.45, duration: 0.3 }}
           >
             <div className="mb-2 text-xs font-medium" style={{ color: "var(--heal-blue-text)" }}>
-              解锁新徽章
+              {replay ? "我的徽章" : "解锁新徽章"}
             </div>
             <div className="flex flex-col gap-3">
               {newBadges.map((b, i) => (
@@ -189,7 +192,7 @@ export function RewardDialog({
         </p>
 
         <button type="button" onClick={onClose} className="heal-btn heal-btn-primary w-full px-3 py-2 text-sm">
-          知道了
+          {replay ? "继续加油" : "知道了"}
         </button>
       </motion.div>
     </motion.div>

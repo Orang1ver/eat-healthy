@@ -45,7 +45,7 @@ export default function HealthPage() {
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()));
   const [rewards, setRewards] = useState<RewardState>(EMPTY_REWARDS);
-  const [celebration, setCelebration] = useState<{ streak: number; badges: typeof BADGES } | null>(null);
+  const [celebration, setCelebration] = useState<{ streak: number; badges: typeof BADGES; replay?: boolean } | null>(null);
 
   // 档案表单。数字字段用 null 表示"已删空未填"，输入框才能清空（否则一删就变成 0）
   const [sex, setSex] = useState<Sex>("男");
@@ -118,6 +118,8 @@ export default function HealthPage() {
   const maxStreak = calcMaxStreak(rewards.days);
   const todayCompletion = evaluateCheckin(checkin, targets);
   const nextB = nextBadge(rewards.badges);
+  // 已拥有的徽章（回看庆祝时展示"我的徽章"）
+  const ownedBadges = BADGES.filter((b) => rewards.badges[b.id]);
 
   const water = checkin?.waterMl ?? 0;
   const steps = checkin?.steps ?? 0;
@@ -264,7 +266,25 @@ export default function HealthPage() {
 
         {/* 连续打卡奖励 */}
         <div className="heal-card mb-4 p-4">
-          <span className="mb-3 block text-sm font-medium">🔥 连续打卡</span>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium">🔥 连续打卡</span>
+            {/* 有任何达成记录时，允许随时回看庆祝（重放动画与彩带） */}
+            {maxStreak > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setCelebration({
+                    streak: currentStreak,
+                    badges: ownedBadges,
+                    replay: true,
+                  })
+                }
+                className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs"
+              >
+                🎬 回看庆祝
+              </button>
+            )}
+          </div>
           {!profile || !targets ? (
             <p className="text-xs leading-6" style={{ color: "var(--heal-muted)" }}>
               先在下面填好健康档案，喝水和步数才有目标线；每天两样都达标，就能点亮连续天数、解锁徽章。
@@ -500,6 +520,7 @@ export default function HealthPage() {
         open={!!celebration}
         streak={celebration?.streak ?? 0}
         newBadges={celebration?.badges ?? []}
+        replay={celebration?.replay ?? false}
         onClose={() => setCelebration(null)}
       />
     </main>
