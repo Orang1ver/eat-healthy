@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { TagChips } from "./components/TagChips";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { IOSInstallHint } from "./components/IOSInstallHint";
 import { RecommendCard } from "./components/RecommendCard";
 import { SaveMealDialog } from "./components/SaveMealDialog";
 import { TakeoutCard } from "./components/TakeoutCard";
@@ -11,6 +13,7 @@ import { getDisabledTags } from "./lib/mutualExclusion";
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./lib/tags";
 import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
 import { buildHealthContext, calcDailyTargets } from "./lib/health";
+import { progressOf } from "./lib/steps";
 import { todayISO, weekStartOf } from "./lib/date";
 import type { CommonIngredient, Dish, TakeoutDish } from "./lib/types";
 
@@ -45,8 +48,22 @@ export default function Home() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveTarget, setSaveTarget] = useState<TakeoutPick | null>(null);
 
+  // 今日进度概览（有健康档案时才显示）
+  const [today, setToday] = useState<{ water: number; waterTarget: number; steps: number; stepsTarget: number } | null>(null);
+
   useEffect(() => {
     setCommonIngredients(loadCommonIngredients());
+    const profile = loadHealthProfile();
+    if (profile) {
+      const t = calcDailyTargets(profile);
+      const c = loadCheckin(todayISO());
+      setToday({
+        water: c?.waterMl ?? 0,
+        waterTarget: t.waterTarget,
+        steps: c?.steps ?? 0,
+        stepsTarget: t.stepsTarget,
+      });
+    }
   }, []);
 
   // 把健康档案 + 今日打卡拼成上下文，随每次推荐发给 AI
@@ -203,14 +220,67 @@ export default function Home() {
             >
               ⚙️
             </button>
-            <a href="/health" className="heal-btn heal-btn-feature flex items-center gap-1.5 px-4 py-2.5 text-sm">
+            <Link href="/health" className="heal-btn heal-btn-feature flex items-center gap-1.5 px-4 py-2.5 text-sm">
               💪 健康小屋
-            </a>
-            <a href="/weekly" className="heal-btn heal-btn-primary flex items-center gap-1.5 px-4 py-2.5 text-sm">
+            </Link>
+            <Link href="/weekly" className="heal-btn heal-btn-primary flex items-center gap-1.5 px-4 py-2.5 text-sm">
               📅 本周回顾
-            </a>
+            </Link>
           </div>
         </header>
+
+        <IOSInstallHint />
+
+        {today && (
+          <Link href="/health" className="heal-card mb-4 flex items-center justify-between gap-3 p-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1.5 text-xs font-medium">今日进度</div>
+              <div className="flex flex-col gap-1.5">
+                {[
+                  {
+                    label: "💧",
+                    cur: today.water,
+                    target: today.waterTarget,
+                    unit: "ml",
+                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差 ${Math.ceil(p.remaining / 250)} 杯`),
+                  },
+                  {
+                    label: "🚶",
+                    cur: today.steps,
+                    target: today.stepsTarget,
+                    unit: "步",
+                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差 ${p.remaining} 步`),
+                  },
+                ].map((row) => {
+                  const p = progressOf(row.cur, row.target);
+                  return (
+                    <div key={row.unit} className="flex items-center gap-2">
+                      <span className="w-4 text-xs">{row.label}</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${p.pct}%`, background: p.done ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
+                        />
+                      </div>
+                      <span className="whitespace-nowrap text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                        {row.cur}/{row.target}
+                        {row.unit === "ml" ? "" : "步"} · {row.tail(p)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <span className="shrink-0 text-lg">›</span>
+          </Link>
+        )}
+
+        {!today && (
+          <Link href="/health" className="heal-card mb-4 flex items-center justify-between gap-2 p-3 text-xs" style={{ color: "var(--heal-muted)" }}>
+            <span>还没填健康档案 —— 填一下就能看到每天该喝多少水、走多少步</span>
+            <span className="shrink-0 text-lg">›</span>
+          </Link>
+        )}
 
         <div className="mb-4 flex gap-2">
           <button
@@ -234,9 +304,9 @@ export default function Home() {
             <span className="text-xs leading-6" style={{ color: "var(--heal-muted)" }}>
               AI 只会从你的菜单库里挑 → 没有学校食堂的菜？去告诉它
             </span>
-            <a href="/takeout" className="heal-btn heal-btn-feature whitespace-nowrap px-3 py-2 text-xs">
+            <Link href="/takeout" className="heal-btn heal-btn-feature whitespace-nowrap px-3 py-2 text-xs">
               🍱 我的菜单库
-            </a>
+            </Link>
           </div>
         )}
 

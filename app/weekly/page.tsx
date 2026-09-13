@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { MealDetailDialog } from "../components/MealDetailDialog";
 import { AddMealDialog } from "../components/AddMealDialog";
 import { updateProfile, weeklyInsight as fetchWeeklyInsight } from "../lib/ai";
@@ -81,9 +82,9 @@ export default function WeeklyPage() {
           <h1 className="text-xl font-medium" style={{ fontFamily: "var(--font-serif, serif)" }}>
             📅 本周饮食回顾
           </h1>
-          <a href="/" className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+          <Link href="/" className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
             ← 返回首页
-          </a>
+          </Link>
         </header>
 
         <div className="mb-4 flex items-center justify-center gap-4">

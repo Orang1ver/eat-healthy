@@ -22,6 +22,17 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+/**
+ * iOS 启动图。没有它，从主屏打开会先闪一下白屏。
+ * 每个尺寸用 media query 精确匹配设备（iOS 只认这种写法）。
+ */
+const SPLASH: { w: number; h: number; dpr: number }[] = [
+  { w: 430, h: 932, dpr: 3 },
+  { w: 393, h: 852, dpr: 3 },
+  { w: 428, h: 926, dpr: 3 },
+  { w: 390, h: 844, dpr: 3 },
+];
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,6 +40,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className="h-full antialiased">
+      <head>
+        {SPLASH.map((s) => (
+          <link
+            key={`${s.w}x${s.h}`}
+            rel="apple-touch-startup-image"
+            href={`${basePath}/splash/splash-${s.w}x${s.h}@${s.dpr}x.png`}
+            media={`(device-width: ${s.w}px) and (device-height: ${s.h}px) and (-webkit-device-pixel-ratio: ${s.dpr})`}
+          />
+        ))}
+      </head>
       <body className="min-h-full flex flex-col">
         <AppInit />
         {children}
