@@ -1,6 +1,13 @@
 # 手机独立运行（已部署）
 
-## ✅ 线上地址
+> ## ⚠️ 授权提醒
+> 本项目是 **[@FishBone0v0](https://github.com/FishBone0v0) 的
+> [AI-recipe-recommendation-system](https://github.com/FishBone0v0/AI-recipe-recommendation-system)**
+> 的衍生版本。**原项目未附 LICENSE、未声明开源协议（默认保留所有权利）**，
+> 因此本衍生版**不应公开分发**。下面的公开部署方式仅供个人自用参考；
+> 若要长期公开使用，请先取得原作者许可，或直接使用原项目。
+
+## ✅ 当前线上地址（个人自用）
 
 **https://orang1ver.github.io/eat-healthy/**
 
