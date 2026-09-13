@@ -88,3 +88,18 @@ export type DailyCheckin = {
   mood?: "好" | "一般" | "累";
   updatedAt: number;
 };
+
+// ---------- 打卡奖励 ----------
+
+/**
+ * 奖励数据独立存放，不写进 DailyCheckin —— 避免污染既有的数据归一化与备份描述。
+ * 仍在 recipe. 前缀下，所以自动被备份导出/清空覆盖。
+ */
+export type RewardState = {
+  /** 达标日期 -> 当天的连续天数 */
+  days: Record<string, { streak: number; at: number }>;
+  /** 已获得的徽章：徽章 id -> 获得日期（一旦拿到永久保留） */
+  badges: Record<string, string>;
+  /** 已弹过庆祝的日期，防止反复加水量重复庆祝 */
+  celebrated: string[];
+};
