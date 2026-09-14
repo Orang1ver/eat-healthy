@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TagChips } from "../components/TagChips";
+import { EditDishDialog } from "../components/EditDishDialog";
 import { importTakeout } from "../lib/ai";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
-import { loadTakeoutDishes, addTakeoutDishes, removeTakeoutDish, resetTakeoutDishes } from "../lib/storage";
+import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes } from "../lib/storage";
 import type { TakeoutDish } from "../lib/types";
 
 export default function TakeoutLibraryPage() {
@@ -26,6 +27,9 @@ export default function TakeoutLibraryPage() {
   const [mPrice, setMPrice] = useState("");
   const [mFlavors, setMFlavors] = useState<string[]>([]);
   const [mAvoids, setMAvoids] = useState<string[]>([]);
+
+  // 编辑菜品
+  const [editing, setEditing] = useState<TakeoutDish | null>(null);
 
   useEffect(() => {
     setDishes(loadTakeoutDishes());
@@ -110,8 +114,8 @@ export default function TakeoutLibraryPage() {
     setMAvoids([]);
   }
 
-  function handleRemove(id: string) {
-    removeTakeoutDish(id);
+  /** 编辑弹窗保存/删除后刷新列表 */
+  function refreshDishes() {
     setDishes(loadTakeoutDishes());
   }
 
@@ -254,20 +258,29 @@ export default function TakeoutLibraryPage() {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {items.map((d) => (
-                    <span key={d.id} className="heal-pill flex items-center gap-1 text-xs">
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setEditing(d)}
+                      title="点击修改"
+                      className="heal-pill flex items-center gap-1 text-xs transition-transform active:scale-95"
+                    >
                       {d.name}
                       {d.priceRange ? <span style={{ color: "var(--heal-muted)" }}>{d.priceRange}</span> : null}
-                      <button type="button" onClick={() => handleRemove(d.id)} aria-label={`删除${d.name}`} className="ml-0.5 opacity-50 hover:opacity-100">
-                        ×
-                      </button>
-                    </span>
+                      <span className="ml-0.5 opacity-40">✏️</span>
+                    </button>
                   ))}
                 </div>
               </div>
             ))}
           </div>
+          <p className="mt-3 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+            点任意菜品可以修改商家、菜名、价格和标签
+          </p>
         </div>
       </div>
+
+      <EditDishDialog dish={editing} onClose={() => setEditing(null)} onSaved={refreshDishes} />
     </main>
   );
 }
