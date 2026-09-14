@@ -89,6 +89,15 @@ export type DailyCheckin = {
   updatedAt: number;
 };
 
+// ---------- 体重记录 ----------
+
+/** 体重记录：每天一条，同一天重复记录覆盖 */
+export type WeightEntry = {
+  date: string; // ISO "2026-09-14"
+  weightKg: number;
+  at: number;
+};
+
 // ---------- 打卡奖励 ----------
 
 /**
