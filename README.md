@@ -226,6 +226,44 @@ data/
 
 ---
 
+## 🔢 版本管理
+
+版本号的**单一事实来源是 `package.json` 的 `version`**，其他任何地方都不再自己生成版本号。
+
+| 位置 | 作用 |
+|---|---|
+| `package.json` → `version` | 唯一权威来源，如 `1.0.0` |
+| `CHANGELOG.md` | 正式的发布记录（Keep a Changelog 格式） |
+| `app/lib/changelog.ts` | App 设置页展示用的精简要点（离线可读） |
+| `next.config.ts` | 构建时把版本注入为 `NEXT_PUBLIC_APP_VERSION`，并注入构建时间 `NEXT_PUBLIC_BUILD_TIME` |
+| `public/sw.js` | 缓存名含版本+构建号，由 `部署.bat` 注入 |
+| 设置页 →「版本」 | 展示版本、构建时间，并可展开看本次更新内容 |
+
+### 递增规则（语义化版本）
+
+| 变更类型 | 命令 | 例子 |
+|---|---|---|
+| 不兼容改动（数据格式、交互大改） | `npm version major` | 1.0.0 → 2.0.0 |
+| 新增功能 | `npm version minor` | 1.0.0 → 1.1.0 |
+| 修 bug、样式微调 | `npm version patch` | 1.0.0 → 1.0.1 |
+
+> 用 `npm version <level> --no-git-tag-version` 可只改 `package.json` 不自动提交；
+> 发布时 `部署.bat` 会负责打 `vX.Y.Z` 的 git tag。
+
+### 发一版的完整流程
+
+1. 改代码
+2. `npm version minor --no-git-tag-version`（或手动改 `package.json`）
+3. **在 `CHANGELOG.md` 顶部加一条新版本**（`部署.bat` 会校验，漏了会警告）
+4. 同步更新 `app/lib/changelog.ts` 的要点（设置页展示用）
+5. 跑 `部署.bat` —— 它会：读版本 → 校验日志 → 构建 → 注入 SW 版本号 →
+   推 `gh-pages` → 给 `main` 打 `vX.Y.Z` tag 并推送
+
+> 说明：Web App Manifest 规范里**没有 `version` 字段**，所以 `public/manifest.json`
+> 不写版本号——这不是遗漏，写了反而不符合规范。
+
+---
+
 ## 📄 License
 
 MIT

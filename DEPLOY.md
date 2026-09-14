@@ -107,7 +107,23 @@ AI 会自动认出菜名和价格，并补上分类/口味/忌口标签。一次
 
 ---
 
-# 五、改完代码怎么重新部署
+# 五、版本管理（发版前必读）
+
+版本号只有一个来源：**`package.json` 的 `version`**。
+
+发一版要做的：
+
+1. `npm version minor --no-git-tag-version`（新功能用 `minor`，修 bug 用 `patch`，不兼容改动用 `major`）
+2. **在 `CHANGELOG.md` 顶部加一条**（不写的话 `部署.bat` 会警告）
+3. 同步改 `app/lib/changelog.ts` 里的要点（App 设置页「本次更新内容」展示的就是它）
+4. 跑 `部署.bat` —— 自动读版本、注入 Service Worker 缓存名、打 `vX.Y.Z` 的 git tag
+
+发完之后，手机上：⚙️ 设置 →「版本」页签能看到 **版本号 + 构建时间**；
+有新版本时首页顶部会出现 `✨ 发现新版本 1.0.0 → 1.0.1`。
+
+---
+
+# 六、改完代码怎么重新部署
 
 ## 方式 A：双击 `部署.bat`（推荐）
 
@@ -158,7 +174,7 @@ Pages 约 30~60 秒后自动重建。
 
 ---
 
-# 六、其它部署方式
+# 七、其它部署方式
 
 ## Cloudflare Pages（国内通常比 GitHub Pages 稳）
 注册 https://dash.cloudflare.com/ → Workers & Pages → Create → Pages → Upload assets → 把 `out/` 拖进去。
@@ -170,7 +186,7 @@ Pages 约 30~60 秒后自动重建。
 
 ---
 
-# 七、常见问题
+# 八、常见问题
 
 **打开是白屏 / 资源 404**
 `BASE_PATH` 与实际访问路径不一致，或 `out/.nojekyll` 缺失。见第五节表格。
