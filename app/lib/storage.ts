@@ -170,6 +170,20 @@ export function removeTakeoutDish(id: string) {
   saveTakeoutDishes(loadTakeoutDishes().filter((d) => d.id !== id));
 }
 
+/** 修改一道菜；改完同商家同名会与别的菜撞车时拒绝（保持库内不重复） */
+export function updateTakeoutDish(id: string, patch: Partial<Omit<TakeoutDish, "id">>): boolean {
+  const list = loadTakeoutDishes();
+  const idx = list.findIndex((d) => d.id === id);
+  if (idx < 0) return false;
+  const merged = { ...list[idx], ...patch };
+  if (!merged.name?.trim()) return false;
+  const clash = list.some((d) => d.id !== id && d.restaurant === merged.restaurant && d.name === merged.name);
+  if (clash) return false;
+  list[idx] = merged;
+  saveTakeoutDishes(list);
+  return true;
+}
+
 /** 清空并恢复到项目自带的示例库 */
 export function resetTakeoutDishes() {
   write(KEYS.takeoutMock, takeoutSeed as TakeoutDish[]);
