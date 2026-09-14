@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-09-14",
+    highlights: [
+      "补录打卡：漏记了哪天可以补回来（可往前 30 天），本周格子点一下就能填",
+      "补录会把前后断开的连续天数连起来，回看庆祝显示的天数也同步更新",
+      "补录达标只给一行轻提示，不会误弹庆祝动画",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-09-14",
     highlights: [

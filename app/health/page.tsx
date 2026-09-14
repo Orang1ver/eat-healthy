@@ -13,6 +13,7 @@ import {
   calcMaxStreak,
   evaluateCheckin,
   nextBadge,
+  recordCompletedDay,
   settleCheckin,
 } from "../lib/rewards";
 // 懒加载：motion + 彩带库只在庆祝弹窗打开时才下载，不拖慢健康页首屏
@@ -40,12 +41,27 @@ const MOODS: { key: NonNullable<DailyCheckin["mood"]>; emoji: string }[] = [
   { key: "累", emoji: "😫" },
 ];
 
+/** 最多可往前补录多少天 */
+const BACKFILL_DAYS = 30;
+
 export default function HealthPage() {
   const [profile, setProfile] = useState<HealthProfile | null>(null);
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()));
   const [rewards, setRewards] = useState<RewardState>(EMPTY_REWARDS);
   const [celebration, setCelebration] = useState<{ streak: number; badges: typeof BADGES; replay?: boolean } | null>(null);
+
+  const today = todayISO();
+  /** 正在查看/编辑的日期，默认今天；往前切即为"补录" */
+  const [selectedDate, setSelectedDate] = useState(today);
+  const viewingToday = selectedDate === today;
+  /** 补录成功后的轻提示（不弹庆祝弹窗） */
+  const [backfillMsg, setBackfillMsg] = useState("");
+
+  /** 能补录的最早日期：今天往前 30 天 */
+  const earliestDate = addDays(today, -BACKFILL_DAYS);
+  const canGoPrev = selectedDate > earliestDate;
+  const canGoNext = selectedDate < today;
 
   // 档案表单。数字字段用 null 表示"已删空未填"，输入框才能清空（否则一删就变成 0）
   const [sex, setSex] = useState<Sex>("男");
@@ -71,15 +87,22 @@ export default function HealthPage() {
       setAllergies(p.allergies);
       setConditions(p.conditions);
     }
-    setCheckin(loadCheckin(todayISO()));
     setRewards(loadRewards());
   }, []);
+
+  // 切换日期：载入该日数据、让本周格子跟随、清掉上一条提示
+  useEffect(() => {
+    setCheckin(loadCheckin(selectedDate));
+    setWeekStart(weekStartOf(selectedDate));
+    setBackfillMsg("");
+  }, [selectedDate]);
 
   const targets = useMemo(() => (profile ? calcDailyTargets(profile) : null), [profile]);
   // checkin 变化时今天那一格也要立刻点亮，所以这里不做 memo，直接每次渲染重算（只有 7 天，开销可忽略）
   const weekCheckins = getCheckinsInWeek(weekStart);
 
-  const today = todayISO();
+  /** 今天的打卡（连续卡片始终看今天，与正在补录哪一天无关） */
+  const todayCheckin = viewingToday ? checkin : loadCheckin(today);
 
   function handleSaveProfile() {
     if (age == null || heightCm == null || weightKg == null) {
@@ -95,28 +118,44 @@ export default function HealthPage() {
   }
 
   /**
-   * 打卡写入的唯一入口。写入后结算奖励：
-   * 今天由「未达标」变「达标」时记录并庆祝（每天最多一次）；事后减水量不收回奖励。
+   * 打卡写入的唯一入口（今天与补录共用）。
+   * 写入后结算奖励：该日由「未达标」变「达标」时记一次；事后减水量不收回奖励。
+   * - 今天达标 → 弹庆祝（每天最多一次）
+   * - 补录过去某天达标 → 只给一行轻提示（补录是事后记账，弹庆祝不合适）
    */
   function updateCheckin(patch: Parameters<typeof saveCheckin>[1]) {
-    const next = saveCheckin(today, patch);
+    const next = saveCheckin(selectedDate, patch);
     setCheckin(next);
 
     const completion = evaluateCheckin(next, targets);
-    if (!completion.allDone) return;
-
-    const settled = settleCheckin(loadRewards(), today);
-    saveRewards(settled.state);
-    setRewards(settled.state);
-    if (settled.firstTimeToday) {
-      setCelebration({ streak: settled.streak, badges: settled.newBadges });
+    if (!completion.allDone) {
+      setBackfillMsg("");
+      return;
     }
+
+    if (viewingToday) {
+      const settled = settleCheckin(loadRewards(), today);
+      saveRewards(settled.state);
+      setRewards(settled.state);
+      if (settled.firstTimeToday) {
+        setCelebration({ streak: settled.streak, badges: settled.newBadges });
+      }
+      return;
+    }
+
+    // 补录：整体重算连续值（补上中间那天可能把前后两段连起来）
+    const recorded = recordCompletedDay(loadRewards(), selectedDate);
+    if (!recorded.isNew) return;
+    saveRewards(recorded.state);
+    setRewards(recorded.state);
+    setBackfillMsg(`已补录 ${selectedDate.slice(5)}，当前连续 ${calcCurrentStreak(recorded.state.days, today)} 天`);
   }
 
   // 连续天数：无档案不发奖励也不显示 0 天，改成引导填档案
   const currentStreak = calcCurrentStreak(rewards.days, today);
   const maxStreak = calcMaxStreak(rewards.days);
-  const todayCompletion = evaluateCheckin(checkin, targets);
+  // 连续卡片看的是"今天"是否完成，与当前正在补录哪一天无关
+  const todayCompletion = evaluateCheckin(todayCheckin, targets);
   const nextB = nextBadge(rewards.badges);
   // 已拥有的徽章（回看庆祝时展示"我的徽章"）
   const ownedBadges = BADGES.filter((b) => rewards.badges[b.id]);
@@ -148,14 +187,52 @@ export default function HealthPage() {
           </div>
         )}
 
-        {/* 今日打卡 */}
+        {/* 今日打卡 / 补录 */}
         <div className="heal-card mb-4 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-medium">🏠 今日打卡</span>
-            <span className="text-xs" style={{ color: "var(--heal-muted)" }}>
-              {todayISO()}
-            </span>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">{viewingToday ? "🏠 今日打卡" : "📝 补录打卡"}</span>
+            {/* 日期切换：往前最多 BACKFILL_DAYS 天，用于补记漏掉的日期 */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="前一天"
+                disabled={!canGoPrev}
+                onClick={() => setSelectedDate((d) => addDays(d, -1))}
+                className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs"
+              >
+                ‹
+              </button>
+              <span className="min-w-[4.5rem] text-center text-xs" style={{ color: viewingToday ? "var(--heal-muted)" : "var(--heal-amber-deep)" }}>
+                {viewingToday ? "今天" : selectedDate.slice(5)}
+              </span>
+              <button
+                type="button"
+                aria-label="后一天"
+                disabled={!canGoNext}
+                onClick={() => setSelectedDate((d) => addDays(d, 1))}
+                className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs"
+              >
+                ›
+              </button>
+            </div>
           </div>
+
+          {!viewingToday && (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-xl p-2" style={{ background: "var(--heal-amber-50)" }}>
+              <span className="text-[11px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
+                正在补录 {selectedDate} 的数据，改完直接保存即可
+              </span>
+              <button type="button" onClick={() => setSelectedDate(today)} className="heal-btn heal-btn-ghost shrink-0 px-2 py-1 text-[11px]">
+                回到今天
+              </button>
+            </div>
+          )}
+
+          {backfillMsg && (
+            <p className="mb-3 text-[11px] font-medium" style={{ color: "var(--heal-blue-text)" }}>
+              {backfillMsg}
+            </p>
+          )}
 
           <div className="mb-4">
             <div className="mb-1 flex items-baseline justify-between text-xs">
@@ -363,8 +440,24 @@ export default function HealthPage() {
               const okWater = targets && c && c.waterMl >= targets.waterTarget;
               const okSteps = targets && c && c.steps >= targets.stepsTarget;
               const allDone = !!(okWater && okSteps);
+              // 可点进该日补录：不早于最早可补日期、且不是未来
+              const pickable = d <= today && d >= earliestDate;
+              const isSelected = d === selectedDate;
               return (
-                <div key={d} className="rounded-xl px-1 py-2" style={{ background: "var(--heal-blue-50)" }}>
+                <button
+                  key={d}
+                  type="button"
+                  disabled={!pickable}
+                  onClick={() => setSelectedDate(d)}
+                  title={pickable ? (d === today ? "今天" : `补录 ${d}`) : undefined}
+                  className="rounded-xl px-1 py-2 transition-transform active:scale-95"
+                  style={{
+                    background: "var(--heal-blue-50)",
+                    outline: isSelected ? "1.5px solid var(--heal-amber-accent)" : "none",
+                    opacity: pickable ? 1 : 0.55,
+                    cursor: pickable ? "pointer" : "default",
+                  }}
+                >
                   <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
                     {WEEKDAY_LABELS[i]}
                   </div>
@@ -379,12 +472,12 @@ export default function HealthPage() {
                       </>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
           <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
-            💧 喝够水 · 🚶 走够步 · ✅ 两样都达标（计入连续天数）
+            💧 喝够水 · 🚶 走够步 · ✅ 两样都达标（计入连续天数）；点日期可补录漏记的那天
           </p>
         </div>
 
