@@ -140,6 +140,7 @@ async function parseMenuImages(images: string[]): Promise<MerchantGroup[]> {
 
 规则：
 - merchant：这张图对应的店铺名 / 食堂窗口名，通常在页面顶部（如"杨国福麻辣烫(五道口店)"）。是食堂菜单牌没写店名时，填窗口名（如"一食堂二楼·麻辣香锅"）。实在看不出来就填空字符串，不要编造。
+- **若连续多张图看起来是同一张长截图被切开的分段**（上下内容连贯、没有新店名），把它们视为**同一家店**：只有出现店名的那一段给 merchant，其余段 merchant 留空；菜品全部合并到这家店，不要拆成多个 merchants 条目。
 - dishes：只要真实可点的菜品（含套餐/主食/小吃/饮品）。忽略：分类标题（如"招牌推荐""热销榜"）、月销量/评分、优惠券满减、已售罄商品、加料/辣度等规格选项、店铺公告。
 - price 填当前售价的数字（元），图里没有价格就不要 price 字段。
 - 同名菜品只保留一次。看不清的菜名跳过，不要猜。
@@ -154,9 +155,19 @@ async function parseMenuImages(images: string[]): Promise<MerchantGroup[]> {
     (arr || []).filter((d) => typeof d?.name === "string" && d.name.trim());
 
   if (Array.isArray(parsed.merchants) && parsed.merchants.length > 0) {
-    return parsed.merchants
+    const groups = parsed.merchants
       .map((g) => ({ merchant: String(g?.merchant || "").trim(), dishes: valid(g?.dishes) }))
       .filter((g) => g.dishes.length > 0);
+
+    // 商家名沿用兜底：长截图被切成多段后，只有第一段能看到店名，
+    // 其余段模型通常返回空 merchant —— 若就此兜底成"学校食堂"，这家店的菜会被归错。
+    // 因此空 merchant 的组沿用上一组的店名（长图切段的典型情形）。
+    let last = "";
+    return groups.map((g) => {
+      const merchant = g.merchant || last;
+      if (merchant) last = merchant;
+      return { merchant, dishes: g.dishes };
+    });
   }
   // 兼容：模型只返回了扁平 dishes
   const flat = valid(parsed.dishes);

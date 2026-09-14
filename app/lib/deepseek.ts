@@ -40,6 +40,19 @@ async function chat(model: string, content: Content, opts: { temperature?: numbe
       /* 忽略解析失败 */
     }
     if (res.status === 401) throw new Error("DeepSeek Key 无效，请在 ⚙️ 设置里检查");
+
+    // 把接口的英文报错翻成能照做的中文提示。
+    // 图片相关的报错文案容易误导：它说"格式不支持"，实际常见原因是尺寸/体积超限
+    // （长截图单边超过 8192 像素就会被这样拒绝），所以提示要指向真正该做的事。
+    const lower = detail.toLowerCase();
+    if (lower.includes("unsupported image") || lower.includes("does not support image") || lower.includes("invalid image")) {
+      throw new Error(
+        "图片被接口拒绝了。常见原因是截图太长或图片过大 —— 请把这张图截成 2~3 段分别上传，或只截菜单的一部分。",
+      );
+    }
+    if (res.status === 413 || lower.includes("too large") || lower.includes("entity too large")) {
+      throw new Error("图片总量太大，请减少张数，或分成几次导入。");
+    }
     throw new Error(detail || `DeepSeek 请求失败（${res.status}）`);
   }
   const data = await res.json();
