@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cleanForceFlag, forceRefresh } from "../lib/forceUpdate";
 
 const DISMISS_KEY = "recipe.updateBannerDismissed.v1";
 
@@ -28,15 +29,7 @@ export function UpdateBanner() {
     if (!("serviceWorker" in navigator)) return;
 
     // 清掉上一轮「立即更新」留下的 _u 时间戳，保持地址干净
-    try {
-      const u = new URL(location.href);
-      if (u.searchParams.has("_u")) {
-        u.searchParams.delete("_u");
-        history.replaceState(null, "", u.pathname + (u.search || "") + u.hash);
-      }
-    } catch {
-      /* 忽略 */
-    }
+    cleanForceFlag();
 
     let dismissed = false;
     try {
@@ -47,9 +40,14 @@ export function UpdateBanner() {
     const reveal = () => {
       if (!dismissed) setShow(true);
     };
+    // 关键：在注册之前记录"页面是否已被旧 SW 控制"。
+    // 首次安装时 clients.claim() 会让页面马上有 controller，若在 activated 时才判断，
+    // 会把"刚刚装上最新版"误报成"发现新版本"。
+    const hadController = !!navigator.serviceWorker.controller;
 
     const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === "SW_UPDATED") reveal();
+      // hadController 兜底：首次安装不该提示「发现新版本」
+      if (e.data?.type === "SW_UPDATED" && hadController) reveal();
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
 
@@ -62,12 +60,13 @@ export function UpdateBanner() {
         reg = r;
 
         // 已经有新 SW 在等待接管（例如广播发出时页面还没挂载）
-        if (r.waiting && navigator.serviceWorker.controller) reveal();
+        if (hadController && r.waiting) reveal();
 
         r.addEventListener("updatefound", () => {
           const nw = r.installing;
           nw?.addEventListener("statechange", () => {
-            if (nw.state === "activated" && navigator.serviceWorker.controller) reveal();
+            // 只有"旧 SW 被新版替换"才是真更新，首次安装不算
+            if (nw.state === "activated" && hadController) reveal();
           });
         });
 
@@ -91,45 +90,15 @@ export function UpdateBanner() {
     };
   }, []);
 
-  /**
-   * 「立即更新」必须做到两件事，否则 iOS 上会"点了没反应"：
-   *  1. 清掉 SW 的 Cache Storage —— 否则重载时旧 SW 仍把缓存的旧页面还给你。
-   *     注意：用户数据存在 localStorage，与 Cache Storage 无关，清缓存不会动数据。
-   *  2. 用带时间戳的地址强制重新拉取 —— 绕过 GitHub Pages 的 max-age=600 HTTP 缓存，
-   *     这样即使当前生效的是"没有 SKIP_WAITING 处理器"的旧版 SW，也一定能拿到新页面。
-   */
-  async function update() {
+  /** 「立即更新」：清缓存 + 时间戳重进（实现见 lib/forceUpdate.ts） */
+  function update() {
     try {
       localStorage.removeItem(DISMISS_KEY);
     } catch {
       /* 忽略 */
     }
     setShow(false);
-
-    // 1. 请等待中的新 SW 立刻接管（旧版 SW 不认这条消息，无所谓，下面两步不依赖它）
-    try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      reg?.waiting?.postMessage("SKIP_WAITING");
-    } catch {
-      /* 忽略 */
-    }
-
-    // 2. 清空 SW 缓存（只删缓存，不动 localStorage 里的用户数据）
-    try {
-      const names = await caches.keys();
-      await Promise.all(names.map((n) => caches.delete(n)));
-    } catch {
-      /* 忽略 */
-    }
-
-    // 3. 带时间戳重新进入，强制走网络
-    try {
-      const u = new URL(location.href);
-      u.searchParams.set("_u", String(Date.now()));
-      location.replace(u.toString());
-    } catch {
-      location.reload();
-    }
+    forceRefresh();
   }
 
   if (!show) return null;
