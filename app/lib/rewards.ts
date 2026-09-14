@@ -125,41 +125,71 @@ export type SettleResult = {
   newBadges: Badge[];
 };
 
+export type RecordResult = {
+  state: RewardState;
+  /** 这次是否新增了一天（决定要不要给用户提示） */
+  isNew: boolean;
+  /** 重算后该日期的连续值 */
+  streak: number;
+  /** 这次新获得的徽章 */
+  newBadges: Badge[];
+};
+
 /**
- * 结算一次打卡。幂等：同一天重复调用只记一次、只庆祝一次。
+ * 按日期升序重算每天的连续值。
+ *
+ * 为什么必须整体重算：补录中间某天会把原本断开的两段连起来
+ * （例如已有 1、2 和 4、5，补上 3 之后，5 那天的连续值应从 2 变成 5）。
+ * 只更新被补的那一天会留下错误的历史值。
+ */
+export function recomputeStreaks(days: Record<string, { streak: number; at: number }>): Record<string, { streak: number; at: number }> {
+  const next: Record<string, { streak: number; at: number }> = {};
+  for (const d of Object.keys(days).sort()) {
+    const prev = next[addDays(d, -1)];
+    next[d] = { streak: prev ? prev.streak + 1 : 1, at: days[d].at };
+  }
+  return next;
+}
+
+/**
+ * 把某天标记为「已达标」。幂等：已记录过的日期不会重复记。
+ * 用于今日达标，也用于补录过去某天。
+ */
+export function recordCompletedDay(prev: RewardState, dateISO: string): RecordResult {
+  const state = normalizeRewards(prev);
+  if (state.days[dateISO]) {
+    return { state, isNew: false, streak: state.days[dateISO].streak, newBadges: [] };
+  }
+
+  const days = recomputeStreaks({ ...state.days, [dateISO]: { streak: 0, at: Date.now() } });
+  const streak = days[dateISO].streak;
+  // 徽章按"重算后的历史最长"授予 —— 补录可能把两段连起来，从而越过某个里程碑
+  const newBadges = pendingBadges(calcMaxStreak(days), state.badges);
+  const badges = { ...state.badges };
+  for (const b of newBadges) badges[b.id] = dateISO;
+
+  return {
+    state: { days, badges, celebrated: state.celebrated },
+    isNew: true,
+    streak,
+    newBadges,
+  };
+}
+
+/**
+ * 结算「今天」的打卡：记录 + 标记已庆祝（决定要不要弹庆祝）。
  * 奖励只发不收 —— 事后把水量减下去不会撤销已达成的记录。
  */
 export function settleCheckin(prev: RewardState, todayISO: string): SettleResult {
-  const state = normalizeRewards(prev);
-
-  // 今天之前已经记录过（且庆祝过）→ 原样返回，不重复弹
-  if (state.days[todayISO]) {
-    return {
-      state,
-      firstTimeToday: false,
-      streak: state.days[todayISO].streak,
-      newBadges: [],
-    };
-  }
-
-  const days = { ...state.days, [todayISO]: { streak: 0, at: Date.now() } };
-  // 写入占位后再算连续天数，这样 countBack 能数到今天
-  const streak = countBack(days, todayISO);
-  days[todayISO] = { streak, at: Date.now() };
-
-  const newBadges = pendingBadges(streak, state.badges);
-  const badges = { ...state.badges };
-  for (const b of newBadges) badges[b.id] = todayISO;
-
-  const celebrated = state.celebrated.includes(todayISO)
-    ? state.celebrated
-    : [...state.celebrated, todayISO];
-
+  const r = recordCompletedDay(prev, todayISO);
+  const celebrated = r.state.celebrated.includes(todayISO)
+    ? r.state.celebrated
+    : [...r.state.celebrated, todayISO];
   return {
-    state: { days, badges, celebrated },
-    firstTimeToday: true,
-    streak,
-    newBadges,
+    state: { ...r.state, celebrated },
+    firstTimeToday: r.isNew,
+    streak: r.streak,
+    newBadges: r.newBadges,
   };
 }
 
