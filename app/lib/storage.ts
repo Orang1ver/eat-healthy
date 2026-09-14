@@ -4,6 +4,8 @@ import { DEFAULT_INGREDIENTS } from "./tags";
 import type {
   CommonIngredient,
   DailyCheckin,
+  ExerciseAwards,
+  ExerciseRecord,
   HealthProfile,
   MealRecord,
   RewardState,
@@ -25,6 +27,8 @@ const KEYS = {
   dailyCheckins: "recipe.dailyCheckins.v1",
   rewards: "recipe.rewards.v1",
   weights: "recipe.weights.v1",
+  exercises: "recipe.exercises.v1",
+  exerciseAwards: "recipe.exerciseAwards.v1",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -269,4 +273,33 @@ export function removeWeight(date: string): Record<string, WeightEntry> {
   delete all[date];
   write(KEYS.weights, all);
   return all;
+}
+
+// ---------- 运动记录 ----------
+
+export function loadExercises(): ExerciseRecord[] {
+  return read<ExerciseRecord[]>(KEYS.exercises, []);
+}
+
+/** 追加一条运动记录，返回最新的完整列表（最新在前） */
+export function addExercise(input: Omit<ExerciseRecord, "id" | "at">): ExerciseRecord[] {
+  const list = loadExercises();
+  const rec: ExerciseRecord = { ...input, id: uuid(), at: Date.now() };
+  const next = [rec, ...list];
+  write(KEYS.exercises, next);
+  return next;
+}
+
+export function removeExercise(id: string): ExerciseRecord[] {
+  const next = loadExercises().filter((e) => e.id !== id);
+  write(KEYS.exercises, next);
+  return next;
+}
+
+export function loadExerciseAwards(): ExerciseAwards {
+  return read<ExerciseAwards>(KEYS.exerciseAwards, {});
+}
+
+export function saveExerciseAwards(a: ExerciseAwards) {
+  write(KEYS.exerciseAwards, a);
 }

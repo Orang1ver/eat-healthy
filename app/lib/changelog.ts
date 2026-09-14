@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-09-14",
+    highlights: [
+      "运动记录：散步 / 跑步 / 爬山 / 徒步 / 骑行 / 游泳等，可填时长与距离",
+      "本周概览与历史列表，随时看到自己动了多少",
+      "运动里程碑（首次 / 10 次 / 30 次 / 50km / 100km / 徒步爬山 10 次）达成时弹出庆祝动画",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-09-14",
     highlights: [

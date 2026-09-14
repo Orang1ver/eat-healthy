@@ -98,6 +98,24 @@ export type WeightEntry = {
   at: number;
 };
 
+// ---------- 运动记录 ----------
+
+export type ExerciseType = "散步" | "跑步" | "爬山" | "徒步" | "骑行" | "游泳" | "球类" | "其他";
+
+/** 一条运动记录。一天可以记多条（比如先散步、再爬山），所以用数组存 */
+export type ExerciseRecord = {
+  id: string;
+  date: string; // ISO "2026-09-14"
+  type: ExerciseType;
+  minutes?: number; // 时长，可选
+  distanceKm?: number; // 距离，可选
+  note?: string;
+  at: number;
+};
+
+/** 运动里程碑的获得记录：里程碑 id -> 获得日期。独立于打卡徽章，绝不共用 */
+export type ExerciseAwards = Record<string, string>;
+
 // ---------- 打卡奖励 ----------
 
 /**
