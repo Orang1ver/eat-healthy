@@ -10,6 +10,7 @@ import type {
   TakeoutDish,
   UserProfile,
   WeeklyInsight,
+  WeightEntry,
 } from "./types";
 import { approxTimeForSlot, mealSlotFromTime, weekStartOf } from "./date";
 import { normalizeRewards } from "./rewards";
@@ -23,6 +24,7 @@ const KEYS = {
   healthProfile: "recipe.healthProfile.v1",
   dailyCheckins: "recipe.dailyCheckins.v1",
   rewards: "recipe.rewards.v1",
+  weights: "recipe.weights.v1",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -241,4 +243,30 @@ export function loadRewards(): RewardState {
 
 export function saveRewards(state: RewardState) {
   write(KEYS.rewards, state);
+}
+
+// ---------- 体重记录 ----------
+
+const WEIGHT_MIN = 25;
+const WEIGHT_MAX = 200;
+
+export function loadWeights(): Record<string, WeightEntry> {
+  return read<Record<string, WeightEntry>>(KEYS.weights, {});
+}
+
+/** 记录某天体重（同一天覆盖）。数值越界则拒绝，返回 null。 */
+export function saveWeight(date: string, weightKg: number): Record<string, WeightEntry> | null {
+  const kg = Math.round(weightKg * 10) / 10;
+  if (!Number.isFinite(kg) || kg < WEIGHT_MIN || kg > WEIGHT_MAX) return null;
+  const all = loadWeights();
+  all[date] = { date, weightKg: kg, at: Date.now() };
+  write(KEYS.weights, all);
+  return all;
+}
+
+export function removeWeight(date: string): Record<string, WeightEntry> {
+  const all = loadWeights();
+  delete all[date];
+  write(KEYS.weights, all);
+  return all;
 }

@@ -16,6 +16,7 @@ import {
   recordCompletedDay,
   settleCheckin,
 } from "../lib/rewards";
+import { WeightCard } from "../components/WeightCard";
 // 懒加载：motion + 彩带库只在庆祝弹窗打开时才下载，不拖慢健康页首屏
 const RewardDialog = dynamic(() => import("../components/RewardDialog").then((m) => m.RewardDialog), {
   ssr: false,
@@ -508,6 +509,27 @@ export default function HealthPage() {
             </div>
           </div>
         )}
+
+        {/* 体重记录（放在目标卡之后：先看目标，再记录并观察趋势） */}
+        <WeightCard
+          fallbackWeight={profile?.weightKg ?? null}
+          onRecorded={(kg) => {
+            // 同步档案体重，让喝水目标（35ml/kg）与热量目标（BMR/TDEE）跟着重算
+            if (!profile) return;
+            const next = saveHealthProfile({
+              sex: profile.sex,
+              age: profile.age,
+              heightCm: profile.heightCm,
+              weightKg: kg,
+              activityLevel: profile.activityLevel,
+              goal: profile.goal,
+              allergies: profile.allergies,
+              conditions: profile.conditions,
+            });
+            setProfile(next);
+            setWeightKg(kg);
+          }}
+        />
 
         {/* 健康档案表单 */}
         <div className="heal-card p-4">
