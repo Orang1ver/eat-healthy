@@ -4,14 +4,22 @@ import { useEffect, useState } from "react";
 
 const DISMISS_KEY = "recipe.updateBannerDismissed.v1";
 
+/** SW 注册路径（带 basePath，兼容子路径部署） */
+function swUrl() {
+  const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  return { url: `${base}/sw.js`, scope: `${base}/` };
+}
+
 /**
  * 「发现新版本」横幅。
  *
- * 原理：sw.js activate 时会向所有页面广播 SW_UPDATED（每次部署 CACHE 版本号都变，
- * 新 SW 必然 activate 一次）。页面收到广播后显示横幅，点击 → 通知 SW skipWaiting
- * 并整页刷新，即进入新版。iOS 主屏 App 没有刷新按钮，这条横幅是它的更新入口。
- *
- * 只有"已经有一个旧 SW 在控制页面"时才提示——首次安装本来拿到就是新版，不用提示。
+ * 为什么需要它 + 需要注意什么：
+ * GitHub Pages 对 sw.js 也发 `Cache-Control: max-age=600`，浏览器做 SW 更新检查时
+ * 可能直接吃 HTTP 缓存拿到旧脚本，于是「检测不到新版本」。iOS 主屏 App 尤其顽固。
+ * 对策：
+ *  1. 注册时 updateViaCache: "none" —— 更新检查绕过 HTTP 缓存（标准做法）
+ *  2. 每次回到 App（visibilitychange → visible）主动 reg.update() 查一次
+ *  3. 检测到新 SW 就显示横幅，用户点一下即切换并刷新
  */
 export function UpdateBanner() {
   const [show, setShow] = useState(false);
@@ -25,50 +33,70 @@ export function UpdateBanner() {
     } catch {
       /* 忽略 */
     }
+    const reveal = () => {
+      if (!dismissed) setShow(true);
+    };
 
     const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === "SW_UPDATED" && !dismissed) setShow(true);
+      if (e.data?.type === "SW_UPDATED") reveal();
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
 
+    const { url, scope } = swUrl();
+    let reg: ServiceWorkerRegistration | undefined;
+
     navigator.serviceWorker
-      .register(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/sw.js`, {
-        scope: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/`,
-      })
+      .register(url, { scope, updateViaCache: "none" })
       .then((r) => {
-        // 页面加载时新 SW 已经在等待接管（比如广播发出时页面还没挂载）——立即提示
-        if (r.waiting && !dismissed) setShow(true);
+        reg = r;
+
+        // 已经有新 SW 在等待接管（例如广播发出时页面还没挂载）
+        if (r.waiting && navigator.serviceWorker.controller) reveal();
+
         r.addEventListener("updatefound", () => {
           const nw = r.installing;
           nw?.addEventListener("statechange", () => {
-            if (nw.state === "activated" && navigator.serviceWorker.controller && !dismissed) {
-              setShow(true);
-            }
+            if (nw.state === "activated" && navigator.serviceWorker.controller) reveal();
           });
         });
+
+        // 主动查一次（注册本身不保证立刻检查）
+        r.update().catch(() => {});
       })
       .catch(() => {});
 
-    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+    // 回到 App 就查一次：iOS 主屏 App 经常是常驻后台再切回，每次切回都是更新机会
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reg?.update().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    // 兜底：久开的页面也定期查（10 分钟一次，很轻）
+    const timer = setInterval(() => reg?.update().catch(() => {}), 10 * 60 * 1000);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(timer);
+    };
   }, []);
 
   function update() {
-    setShow(false);
     try {
       localStorage.removeItem(DISMISS_KEY);
     } catch {
       /* 忽略 */
     }
+    // 通知等待中的 SW 立刻接管，然后整页刷新加载新版资源
     navigator.serviceWorker.controller?.postMessage("SKIP_WAITING");
-    // 新 SW 接管后整页刷新，加载新版资源
-    setTimeout(() => location.reload(), 150);
+    setShow(false);
+    setTimeout(() => location.reload(), 200);
   }
 
   if (!show) return null;
 
   return (
     <div
-      className="heal-card mb-4 flex items-center justify-between gap-2 p-3"
+      className="heal-card mx-auto mb-4 flex w-full max-w-2xl items-center justify-between gap-2 p-3"
       style={{ background: "var(--heal-blue-50)" }}
     >
       <span className="text-xs leading-5" style={{ color: "var(--heal-blue-text)" }}>

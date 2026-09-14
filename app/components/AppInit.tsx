@@ -3,18 +3,11 @@
 import { useEffect } from "react";
 import { seedDefaultIngredientsIfEmpty, seedTakeoutMockIfEmpty } from "../lib/storage";
 
-/** 首次启动时预置默认数据、注册 Service Worker、申请持久存储 */
+/** 首次启动时预置默认数据、申请持久存储（SW 注册与更新检查由 UpdateBanner 统一负责） */
 export function AppInit() {
   useEffect(() => {
     seedDefaultIngredientsIfEmpty();
     seedTakeoutMockIfEmpty();
-
-    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
-      const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
-      navigator.serviceWorker.register(`${base}/sw.js`, { scope: `${base}/` }).catch(() => {
-        /* 注册失败不影响正常使用 */
-      });
-    }
 
     /**
      * 申请持久存储。已「添加到主屏幕」的 Web App 本身就豁免 Safari 的 7 天清除规则，
