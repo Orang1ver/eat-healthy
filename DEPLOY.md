@@ -113,7 +113,8 @@ AI 会自动认出菜名和价格，并补上分类/口味/忌口标签。一次
 
 发一版要做的：
 
-1. `npm version minor --no-git-tag-version`（新功能用 `minor`，修 bug 用 `patch`，不兼容改动用 `major`）
+1. `npm version patch --no-git-tag-version`（**小改动一律用 `patch`**；
+   只有成块的新功能才用 `minor`；不兼容改动用 `major`；只改文档则不升版本）
 2. **在 `CHANGELOG.md` 顶部加一条**（不写的话 `部署.bat` 会警告）
 3. 同步改 `app/lib/changelog.ts` 里的要点（App 设置页「本次更新内容」展示的就是它）
 4. 跑 `部署.bat` —— 自动读版本、注入 Service Worker 缓存名、打 `vX.Y.Z` 的 git tag

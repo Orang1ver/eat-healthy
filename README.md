@@ -239,21 +239,23 @@ data/
 | `public/sw.js` | 缓存名含版本+构建号，由 `部署.bat` 注入 |
 | 设置页 →「版本」 | 展示版本、构建时间，并可展开看本次更新内容 |
 
-### 递增规则（语义化版本）
+### 递增规则（语义化版本，**偏向克制：能用 patch 就别用 minor**）
 
 | 变更类型 | 命令 | 例子 |
 |---|---|---|
 | 不兼容改动（数据格式、交互大改） | `npm version major` | 1.0.0 → 2.0.0 |
-| 新增功能 | `npm version minor` | 1.0.0 → 1.1.0 |
-| 修 bug、样式微调 | `npm version patch` | 1.0.0 → 1.0.1 |
+| **成块的新功能**（新增一个完整模块/页面/能力） | `npm version minor` | 1.0.0 → 1.1.0 |
+| **其余一切**：修 bug、样式/文案调整、加一个按钮或交互优化 | `npm version patch` | 1.0.0 → 1.0.1 |
+| 只改文档 / 注释 / 构建脚本 | 不升版本 | — |
 
+> 判断依据是"用户能感知到的变化有多成块"，不是"改了多少行代码"。拿不准时选 patch。
 > 用 `npm version <level> --no-git-tag-version` 可只改 `package.json` 不自动提交；
 > 发布时 `部署.bat` 会负责打 `vX.Y.Z` 的 git tag。
 
 ### 发一版的完整流程
 
 1. 改代码
-2. `npm version minor --no-git-tag-version`（或手动改 `package.json`）
+2. `npm version patch --no-git-tag-version`（小改动就用 patch；成块新功能才用 minor）
 3. **在 `CHANGELOG.md` 顶部加一条新版本**（`部署.bat` 会校验，漏了会警告）
 4. 同步更新 `app/lib/changelog.ts` 的要点（设置页展示用）
 5. 跑 `部署.bat` —— 它会：读版本 → 校验日志 → 构建 → 注入 SW 版本号 →
