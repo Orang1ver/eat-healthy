@@ -6,7 +6,7 @@ import { TagChips } from "../components/TagChips";
 import { EditDishDialog } from "../components/EditDishDialog";
 import { importTakeout } from "../lib/ai";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
-import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
+import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, renameTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
 import type { TakeoutDish } from "../lib/types";
 
 export default function TakeoutLibraryPage() {
@@ -38,6 +38,8 @@ export default function TakeoutLibraryPage() {
   // 菜单库操作的反馈与撤销（渲染在列表区，与截图导入区的 importMsg 分开）
   const [libMsg, setLibMsg] = useState("");
   const [undo, setUndo] = useState<TakeoutUndo | null>(null);
+  /** 正在改名的商家（就地变输入框，避免用 window.prompt —— iOS 主屏 App 上不可靠） */
+  const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
 
   useEffect(() => {
     setDishes(loadTakeoutDishes());
@@ -160,6 +162,25 @@ export default function TakeoutLibraryPage() {
     setDishes(removeTakeoutMerchant(restaurant));
     setUndo(peekTakeoutUndo());
     setLibMsg(`已删除商家「${restaurant}」（${count} 道菜）`);
+  }
+
+  /** 给整个商家改名（名下菜品一起换名）；目标店名已存在时会合并 */
+  function handleRenameMerchant(from: string, value: string) {
+    const target = value.trim();
+    if (!target || target === from) {
+      setRenaming(null);
+      return;
+    }
+    // 改名 + 去重会动多条记录，先存快照
+    pushTakeoutUndo(`把「${from}」改名为「${target}」`, loadTakeoutDishes());
+    const { list, renamed, merged } = renameTakeoutMerchant(from, target);
+    setDishes(list);
+    setUndo(peekTakeoutUndo());
+    setRenaming(null);
+    setLibMsg(
+      `已把「${from}」改名为「${target}」（${renamed} 道菜）` +
+        (merged > 0 ? `；有 ${merged} 道与「${target}」原有菜品重名，已合并` : ""),
+    );
   }
 
   /** 清空整个菜单库 */
@@ -365,18 +386,60 @@ export default function TakeoutLibraryPage() {
             {grouped.map(([restaurant, items]) => (
               <div key={restaurant}>
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
-                    🏠 {restaurant}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveMerchant(restaurant, items.length)}
-                    className="heal-btn heal-btn-ghost shrink-0 px-2 py-0.5 text-[10px]"
-                    style={{ color: "#b91c1c" }}
-                    title={`删除「${restaurant}」的全部菜品`}
-                  >
-                    🗑️ 删除这家（{items.length} 道）
-                  </button>
+                  {renaming?.from === restaurant ? (
+                    /* 就地改名：避免用 window.prompt（iOS 主屏 App 上不可靠） */
+                    <>
+                      <input
+                        autoFocus
+                        aria-label="商家名称"
+                        className="min-w-0 flex-1 rounded-full border px-2 py-0.5 text-xs"
+                        value={renaming.value}
+                        onChange={(e) => setRenaming({ from: restaurant, value: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleRenameMerchant(restaurant, renaming.value);
+                          if (e.key === "Escape") setRenaming(null);
+                        }}
+                        style={{ borderColor: "var(--heal-card-border)" }}
+                      />
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleRenameMerchant(restaurant, renaming.value)}
+                          className="heal-btn heal-btn-primary px-2 py-0.5 text-[10px]"
+                        >
+                          保存
+                        </button>
+                        <button type="button" onClick={() => setRenaming(null)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[10px]">
+                          取消
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                        🏠 {restaurant}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setRenaming({ from: restaurant, value: restaurant })}
+                          className="heal-btn heal-btn-ghost px-2 py-0.5 text-[10px]"
+                          title={`给「${restaurant}」改名（名下菜品一起改）`}
+                        >
+                          ✏️ 改名
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMerchant(restaurant, items.length)}
+                          className="heal-btn heal-btn-ghost px-2 py-0.5 text-[10px]"
+                          style={{ color: "#b91c1c" }}
+                          title={`删除「${restaurant}」的全部菜品`}
+                        >
+                          🗑️ 删除这家（{items.length} 道）
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {items.map((d) => (
