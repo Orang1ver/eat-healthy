@@ -230,6 +230,43 @@ export function removeTakeoutMerchant(restaurant: string): TakeoutDish[] {
   return next;
 }
 
+/**
+ * 给整个商家改名：它名下所有菜品一起换到新店名。
+ *
+ * 顺带处理改名后可能出现的重名：若目标店名已存在，两家的菜品会合并，
+ * 此时按「店名 + 菜名」去重（保留先出现的），并把合并条数如实返回。
+ * —— 这正是修掉"杨国福麻辣烫"与"杨国福麻辣烫(五道口店)"这类重复商家的手段。
+ */
+export function renameTakeoutMerchant(
+  oldName: string,
+  newName: string,
+): { list: TakeoutDish[]; renamed: number; merged: number } {
+  const target = newName.trim();
+  const list = loadTakeoutDishes();
+  const renamed = list.filter((d) => d.restaurant === oldName).length;
+  if (!target || target === oldName || renamed === 0) {
+    return { list, renamed: 0, merged: 0 };
+  }
+
+  const renamedList = list.map((d) => (d.restaurant === oldName ? { ...d, restaurant: target } : d));
+
+  const seen = new Set<string>();
+  const deduped: TakeoutDish[] = [];
+  let merged = 0;
+  for (const d of renamedList) {
+    const key = dishKey(d);
+    if (seen.has(key)) {
+      merged++;
+      continue;
+    }
+    seen.add(key);
+    deduped.push(d);
+  }
+
+  saveTakeoutDishes(deduped);
+  return { list: deduped, renamed, merged };
+}
+
 /** 清空整个菜单库（不写种子） */
 export function clearTakeoutDishes(): TakeoutDish[] {
   saveTakeoutDishes([]);

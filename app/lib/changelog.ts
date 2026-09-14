@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.0",
+    date: "2026-09-14",
+    highlights: [
+      "菜单库可给整个商家改名（名下菜品一起改），就地编辑、不用弹窗",
+      "改到已存在的店名会自动合并两家，并去掉重复菜品——可用来修掉“店名写法不一致”导致的重复商家",
+      "改名同样会存快照，可一键撤销",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-09-14",
     highlights: [
