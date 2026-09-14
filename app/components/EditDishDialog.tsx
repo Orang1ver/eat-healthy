@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { TagChips } from "./TagChips";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
-import { removeTakeoutDish, updateTakeoutDish } from "../lib/storage";
+import { loadTakeoutDishes, pushTakeoutUndo, removeTakeoutDish, updateTakeoutDish } from "../lib/storage";
 import type { TakeoutDish } from "../lib/types";
 
 /**
@@ -136,7 +136,8 @@ export function EditDishDialog({
             type="button"
             onClick={() => {
               if (!dish) return;
-              if (!confirm(`删掉「${dish.name}」？不能撤销`)) return;
+              if (!confirm(`删掉「${dish.name}」？\n\n可以回菜单库点「撤销上次操作」恢复。`)) return;
+              pushTakeoutUndo(`删除了「${dish.name}」`, loadTakeoutDishes());
               removeTakeoutDish(dish.id);
               onSaved();
               onClose();

@@ -6,7 +6,7 @@ import { TagChips } from "../components/TagChips";
 import { EditDishDialog } from "../components/EditDishDialog";
 import { importTakeout } from "../lib/ai";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
-import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes } from "../lib/storage";
+import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
 import type { TakeoutDish } from "../lib/types";
 
 export default function TakeoutLibraryPage() {
@@ -31,8 +31,17 @@ export default function TakeoutLibraryPage() {
   // 编辑菜品
   const [editing, setEditing] = useState<TakeoutDish | null>(null);
 
+  // 导入策略
+  const [overwriteSameName, setOverwriteSameName] = useState(true);
+  const [clearBeforeImport, setClearBeforeImport] = useState(false);
+
+  // 菜单库操作的反馈与撤销（渲染在列表区，与截图导入区的 importMsg 分开）
+  const [libMsg, setLibMsg] = useState("");
+  const [undo, setUndo] = useState<TakeoutUndo | null>(null);
+
   useEffect(() => {
     setDishes(loadTakeoutDishes());
+    setUndo(peekTakeoutUndo());
   }, []);
 
   /** 压缩到宽 1600 的 JPEG，控制上传体积 */
@@ -71,18 +80,41 @@ export default function TakeoutLibraryPage() {
 
   async function importFromText() {
     if (!importText.trim() && shots.length === 0) return;
+
+    // 清空全库是不可逆的大动作，先二次确认（有快照可撤销，文案里说明）
+    if (clearBeforeImport) {
+      const ok = confirm(
+        `确定要先清空整个菜单库吗？\n\n` +
+          `现在库里有 ${dishes.length} 道菜、${grouped.length} 个商家/窗口，都会被清掉，只保留这次导入的内容。\n` +
+          `清空后如果反悔，可以用列表区的「撤销上次操作」恢复。`,
+      );
+      if (!ok) return;
+    }
+    // 覆盖会把旧记录（含你手动改过的内容）换成新数据，同样先存快照
+    if (overwriteSameName || clearBeforeImport) {
+      pushTakeoutUndo(clearBeforeImport ? "清空菜单库后导入" : "覆盖导入", loadTakeoutDishes());
+    }
+
     setImporting(true);
     setImportMsg("");
     setImportErr("");
     try {
-      const dishes = await importTakeout({ text: importText, images: shots, merchant: shotMerchant.trim() });
-      const { added, list } = addTakeoutDishes(dishes);
+      const rows = await importTakeout({ text: importText, images: shots, merchant: shotMerchant.trim() });
+      const { added, updated, list } = importTakeoutDishes(rows, {
+        overwriteSameName,
+        clearFirst: clearBeforeImport,
+      });
       setDishes(list);
+      setUndo(peekTakeoutUndo());
       // 把识别到的店铺列出来，方便你核对归属对不对
-      const shops = Array.from(new Set(dishes.map((d) => d.restaurant)));
+      const shops = Array.from(new Set(rows.map((d) => d.restaurant)));
       const shopText = shops.length > 0 ? `（${shops.slice(0, 3).join("、")}${shops.length > 3 ? ` 等 ${shops.length} 家` : ""}）` : "";
+      const skipped = rows.length - added - updated;
       setImportMsg(
-        `识别出 ${dishes.length} 道菜${shopText}，新加入 ${added} 道${dishes.length - added > 0 ? `（${dishes.length - added} 道已存在）` : ""} ✅`,
+        `识别出 ${rows.length} 道菜${shopText}：新增 ${added} 道` +
+          (updated > 0 ? `、更新 ${updated} 道` : "") +
+          (skipped > 0 ? `、跳过 ${skipped} 道（同名未开启覆盖）` : "") +
+          " ✅",
       );
       setImportText("");
       setShots([]);
@@ -95,7 +127,7 @@ export default function TakeoutLibraryPage() {
 
   function addManual() {
     if (!mName.trim()) return;
-    const { list, added } = addTakeoutDishes([
+    const { list, added, updated } = addTakeoutDishes([
       {
         restaurant: mRestaurant.trim() || "学校食堂",
         name: mName.trim(),
@@ -106,24 +138,59 @@ export default function TakeoutLibraryPage() {
       },
     ]);
     setDishes(list);
-    if (!added) setImportMsg("这个菜已经在库里啦");
-    else setImportMsg(`已添加「${mName.trim()}」✅`);
+    if (added) setImportMsg(`已添加「${mName.trim()}」✅`);
+    else if (updated) setImportMsg(`已用新数据更新「${mName.trim()}」✅`);
+    else setImportMsg("这个菜已经在库里啦（同名数据没变）");
     setMName("");
     setMPrice("");
     setMFlavors([]);
     setMAvoids([]);
   }
 
-  /** 编辑弹窗保存/删除后刷新列表 */
+  /** 编辑弹窗保存/删除后刷新列表（顺带同步撤销槽位） */
   function refreshDishes() {
     setDishes(loadTakeoutDishes());
+    setUndo(peekTakeoutUndo());
+  }
+
+  /** 删除整个商家（连同它的所有菜品），删前存快照以便撤销 */
+  function handleRemoveMerchant(restaurant: string, count: number) {
+    if (!confirm(`删掉「${restaurant}」的 ${count} 道菜？\n\n可以点列表区的「撤销上次操作」恢复。`)) return;
+    pushTakeoutUndo(`删除了「${restaurant}」的 ${count} 道菜`, loadTakeoutDishes());
+    setDishes(removeTakeoutMerchant(restaurant));
+    setUndo(peekTakeoutUndo());
+    setLibMsg(`已删除商家「${restaurant}」（${count} 道菜）`);
+  }
+
+  /** 清空整个菜单库 */
+  function handleClearLibrary() {
+    if (!confirm(`清空整个菜单库？\n\n现在库里有 ${dishes.length} 道菜、${grouped.length} 个商家/窗口。\n可以点「撤销上次操作」恢复。`)) return;
+    pushTakeoutUndo(`清空了菜单库（${dishes.length} 道菜）`, loadTakeoutDishes());
+    setDishes(clearTakeoutDishes());
+    setUndo(peekTakeoutUndo());
+    setLibMsg("菜单库已清空");
+  }
+
+  /** 撤销上一次破坏性操作 */
+  function handleUndo() {
+    const restored = popTakeoutUndo();
+    if (!restored) {
+      setUndo(null);
+      setLibMsg("没有可撤销的操作");
+      return;
+    }
+    setDishes(restored);
+    setUndo(null);
+    setLibMsg(`已撤销：${undo?.reason ?? "上一次操作"}`);
   }
 
   function handleReset() {
-    if (!confirm("确定要清空现在的菜单库、恢复成示例库吗？你导入的食堂/外卖会被清掉。")) return;
+    if (!confirm("确定要清空现在的菜单库、恢复成示例库吗？你导入的食堂/外卖会被清掉。\n\n可以点「撤销上次操作」恢复。")) return;
+    pushTakeoutUndo("恢复示例库", loadTakeoutDishes());
     resetTakeoutDishes();
     setDishes(loadTakeoutDishes());
-    setImportMsg("已恢复示例库");
+    setUndo(peekTakeoutUndo());
+    setLibMsg("已恢复示例库");
   }
 
   return (
@@ -207,6 +274,16 @@ export default function TakeoutLibraryPage() {
             onChange={(e) => setImportText(e.target.value)}
             style={{ borderColor: "var(--heal-card-border)" }}
           />
+          <div className="mb-3 flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={overwriteSameName} onChange={(e) => setOverwriteSameName(e.target.checked)} />
+              同名菜品用新数据覆盖（价格变了就会更新）
+            </label>
+            <label className="flex items-center gap-2 text-xs" style={{ color: clearBeforeImport ? "#b91c1c" : undefined }}>
+              <input type="checkbox" checked={clearBeforeImport} onChange={(e) => setClearBeforeImport(e.target.checked)} />
+              先清空整个菜单库再导入（只留这次导入的内容）
+            </label>
+          </div>
           <button
             type="button"
             disabled={importing || (!importText.trim() && shots.length === 0)}
@@ -239,12 +316,46 @@ export default function TakeoutLibraryPage() {
 
         {/* 菜单列表 */}
         <div className="heal-card mb-4 p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-medium">📋 当前菜单库</span>
-            <button type="button" onClick={handleReset} className="heal-btn heal-btn-ghost px-2 py-1 text-[11px]">
-              恢复示例库
-            </button>
+            <div className="flex items-center gap-1">
+              {dishes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearLibrary}
+                  className="heal-btn heal-btn-ghost px-2 py-1 text-[11px]"
+                  style={{ color: "#b91c1c" }}
+                >
+                  🗑️ 清空
+                </button>
+              )}
+              <button type="button" onClick={handleReset} className="heal-btn heal-btn-ghost px-2 py-1 text-[11px]">
+                恢复示例库
+              </button>
+            </div>
           </div>
+
+          {/* 撤销条：有快照时出现，只能撤销一次 */}
+          {undo && (
+            <div
+              className="mb-3 flex items-center justify-between gap-2 rounded-xl p-2"
+              style={{ background: "var(--heal-amber-50)" }}
+            >
+              <span className="text-[11px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
+                ↩︎ 可撤销：{undo.reason}
+              </span>
+              <button type="button" onClick={handleUndo} className="heal-btn heal-btn-ghost shrink-0 px-2 py-1 text-[11px]">
+                撤销
+              </button>
+            </div>
+          )}
+
+          {libMsg && (
+            <p className="mb-2 text-[11px] leading-5" style={{ color: "var(--heal-blue-text)" }}>
+              {libMsg}
+            </p>
+          )}
+
           {dishes.length === 0 && (
             <p className="py-4 text-center text-xs" style={{ color: "var(--heal-muted)" }}>
               还是空的，先用上面的方式加点菜吧
@@ -253,8 +364,19 @@ export default function TakeoutLibraryPage() {
           <div className="flex flex-col gap-3">
             {grouped.map(([restaurant, items]) => (
               <div key={restaurant}>
-                <div className="mb-1 text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
-                  🏠 {restaurant}
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                    🏠 {restaurant}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMerchant(restaurant, items.length)}
+                    className="heal-btn heal-btn-ghost shrink-0 px-2 py-0.5 text-[10px]"
+                    style={{ color: "#b91c1c" }}
+                    title={`删除「${restaurant}」的全部菜品`}
+                  >
+                    🗑️ 删除这家（{items.length} 道）
+                  </button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {items.map((d) => (
@@ -275,7 +397,7 @@ export default function TakeoutLibraryPage() {
             ))}
           </div>
           <p className="mt-3 text-[11px]" style={{ color: "var(--heal-muted)" }}>
-            点任意菜品可以修改商家、菜名、价格和标签
+            点任意菜品可以修改；点商家右侧可整家删除。删错了用上面的「撤销」挽回。
           </p>
         </div>
       </div>
