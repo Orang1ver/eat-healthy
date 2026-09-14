@@ -21,13 +21,18 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() =>
-        // 新版本接管后，通知所有页面"有新版本了"，页面据此弹出更新横幅
+      .then((keys) => {
+        const others = keys.filter((k) => k !== CACHE);
+        // 有其他缓存 = 这次是"替换旧版本"，值得通知用户；空手而来 = 首次安装，不必打扰
+        const isUpgrade = others.length > 0;
+        return Promise.all(others.map((k) => caches.delete(k))).then(() => isUpgrade);
+      })
+      .then((isUpgrade) => {
+        if (!isUpgrade) return;
         self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
           clients.forEach((client) => client.postMessage({ type: "SW_UPDATED" }));
-        }),
-      ),
+        });
+      }),
   );
   self.clients.claim();
 });

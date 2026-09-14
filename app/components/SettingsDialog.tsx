@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { loadApiKeys, saveApiKeys, type ApiKeys } from "../lib/apiKeys";
 import { backupToText, clearAllData, describeBackup, downloadBackup, importBackup } from "../lib/backup";
+import { forceRefresh } from "../lib/forceUpdate";
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [keys, setKeys] = useState<ApiKeys>({});
-  const [tab, setTab] = useState<"key" | "backup">("key");
+  const [tab, setTab] = useState<"key" | "backup" | "about">("key");
 
   // 备份
   const [includeKey, setIncludeKey] = useState(true);
@@ -31,6 +32,12 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   function save() {
     saveApiKeys(keys);
     onClose();
+  }
+
+  function hardRefresh() {
+    setMsg("正在强制刷新…");
+    setErr("");
+    forceRefresh();
   }
 
   async function copyBackup() {
@@ -92,6 +99,13 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             className={`heal-btn flex-1 px-3 py-1.5 text-xs ${tab === "backup" ? "heal-btn-feature" : "heal-btn-ghost"}`}
           >
             数据备份
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("about")}
+            className={`heal-btn flex-1 px-3 py-1.5 text-xs ${tab === "about" ? "heal-btn-feature" : "heal-btn-ghost"}`}
+          >
+            版本
           </button>
         </div>
 
@@ -168,6 +182,35 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
               <button type="button" onClick={doClear} className="heal-btn heal-btn-ghost px-3 py-2 text-xs" style={{ color: "#b91c1c" }}>
                 🗑️ 清空本机所有数据
+              </button>
+
+              {msg && <p className="mt-2 text-xs leading-5" style={{ color: "var(--heal-blue-text)" }}>{msg}</p>}
+              {err && <p className="mt-2 text-xs leading-5 text-rose-600">{err}</p>}
+            </>
+          )}
+
+          {tab === "about" && (
+            <>
+              <p className="mb-3 text-xs leading-5" style={{ color: "var(--heal-muted)" }}>
+                如果首页一直没出现「发现新版本」，或者点了没反应，用下面的「强制刷新」。
+                它会清掉页面缓存并重新下载（<b>不会动你的档案和记录</b>）。
+              </p>
+
+              <div className="mb-3 rounded-2xl p-3 text-xs leading-6" style={{ background: "var(--heal-blue-50)", color: "var(--heal-blue-text)" }}>
+                <div>
+                  当前版本：<b>{process.env.NEXT_PUBLIC_BUILD_STAMP || "本地开发"}</b>
+                </div>
+                <div style={{ opacity: 0.8 }}>
+                  看到这个时间比较旧，就说明还在跑旧版，点下面的强制刷新。
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={hardRefresh}
+                className="heal-btn heal-btn-primary w-full px-3 py-2 text-sm"
+              >
+                🔄 强制刷新到最新版
               </button>
 
               {msg && <p className="mt-2 text-xs leading-5" style={{ color: "var(--heal-blue-text)" }}>{msg}</p>}
