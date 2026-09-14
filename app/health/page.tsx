@@ -17,6 +17,7 @@ import {
   settleCheckin,
 } from "../lib/rewards";
 import { WeightCard } from "../components/WeightCard";
+import { ExerciseCard } from "../components/ExerciseCard";
 // 懒加载：motion + 彩带库只在庆祝弹窗打开时才下载，不拖慢健康页首屏
 const RewardDialog = dynamic(() => import("../components/RewardDialog").then((m) => m.RewardDialog), {
   ssr: false,
@@ -50,7 +51,17 @@ export default function HealthPage() {
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()));
   const [rewards, setRewards] = useState<RewardState>(EMPTY_REWARDS);
-  const [celebration, setCelebration] = useState<{ streak: number; badges: typeof BADGES; replay?: boolean } | null>(null);
+  /**
+   * 庆祝弹窗的数据。打卡与运动里程碑共用同一个弹窗，
+   * 所以字段都可选：打卡传 streak/badges，运动传 badges/hero/texts。
+   */
+  const [celebration, setCelebration] = useState<{
+    streak?: number;
+    badges: { id: string; emoji: string; label: string }[];
+    replay?: boolean;
+    hero?: { emoji: string; value: number | string; unit: string; caption: string };
+    texts?: { title?: string; subtitle?: string; praise?: string; cta?: string };
+  } | null>(null);
 
   const today = todayISO();
   /** 正在查看/编辑的日期，默认今天；往前切即为"补录" */
@@ -531,6 +542,22 @@ export default function HealthPage() {
           }}
         />
 
+        {/* 运动记录（独立于步数打卡：不写 rewards，里程碑也只弹自己的庆祝） */}
+        <ExerciseCard
+          onMilestone={(milestones, hero) =>
+            setCelebration({
+              badges: milestones,
+              hero,
+              texts: {
+                title: "运动达成！",
+                subtitle: milestones.map((m) => m.label).join(" · "),
+                praise: "动起来就已经赢过昨天的自己了 💪",
+                cta: "继续加油",
+              },
+            })
+          }
+        />
+
         {/* 健康档案表单 */}
         <div className="heal-card p-4">
           <span className="mb-3 block text-sm font-medium">📋 我的健康档案</span>
@@ -636,6 +663,8 @@ export default function HealthPage() {
         streak={celebration?.streak ?? 0}
         newBadges={celebration?.badges ?? []}
         replay={celebration?.replay ?? false}
+        hero={celebration?.hero}
+        texts={celebration?.texts}
         onClose={() => setCelebration(null)}
       />
     </main>
