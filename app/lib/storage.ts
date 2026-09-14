@@ -29,6 +29,8 @@ const KEYS = {
   weights: "recipe.weights.v1",
   exercises: "recipe.exercises.v1",
   exerciseAwards: "recipe.exerciseAwards.v1",
+  takeoutSeeded: "recipe.takeoutSeeded.v1",
+  takeoutUndo: "recipe.takeoutUndo.v1",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -148,32 +150,102 @@ export function loadTakeoutDishes(): TakeoutDish[] {
   return read<TakeoutDish[]>(KEYS.takeoutMock, []);
 }
 
+/**
+ * 只在"从未播过种"时写入示例库。
+ *
+ * 早先的实现是 `if (loadTakeoutDishes().length > 0) return;` —— 只要库为空就重新灌示例，
+ * 于是用户把商家全删光后一刷新，29 条示例菜又回来了，看起来像"删不掉"。
+ * 现在用一次性标记控制，顺序很重要（写错会覆盖老用户的数据）：
+ *   已有标记 → 直接返回
+ *   库里已有数据（老用户）→ 只补标记，绝不动数据
+ *   真正的首次运行 → 写示例库 + 写标记
+ */
 export function seedTakeoutMockIfEmpty() {
-  if (loadTakeoutDishes().length > 0) return;
+  if (read<boolean>(KEYS.takeoutSeeded, false)) return;
+  if (loadTakeoutDishes().length > 0) {
+    write(KEYS.takeoutSeeded, true);
+    return;
+  }
   write(KEYS.takeoutMock, takeoutSeed as TakeoutDish[]);
+  write(KEYS.takeoutSeeded, true);
 }
 
 export function saveTakeoutDishes(dishes: TakeoutDish[]) {
   write(KEYS.takeoutMock, dishes);
 }
 
-/** 追加菜品；同商家同名视为重复，跳过。返回追加后的完整列表 */
-export function addTakeoutDishes(incoming: Omit<TakeoutDish, "id">[]): { list: TakeoutDish[]; added: number } {
+/** 库内菜品的主键：同商家同名视为同一道菜 */
+function dishKey(d: Pick<TakeoutDish, "restaurant" | "name">): string {
+  return `${d.restaurant}::${d.name}`;
+}
+
+/**
+ * 导入菜品。默认跳过已存在的同商家同名菜；`overwriteSameName` 时用新数据覆盖旧记录。
+ *
+ * 覆盖时的两个要点：
+ * - **复用旧 id**：否则 React 的 key 会变，用户正打开的编辑弹窗会指向已消失的行
+ * - 同批内出现同名时**后者覆盖前者**（模型的输出顺序不可靠，靠后的通常信息更全）
+ * - `priceRange` 为新数据的原值（可能是 undefined）—— 即"以新数据为准"，
+ *   与 EditDishDialog 里 `price.trim() || undefined` 的语义保持一致
+ */
+export function addTakeoutDishes(
+  incoming: Omit<TakeoutDish, "id">[],
+  opts?: { overwriteSameName?: boolean },
+): { list: TakeoutDish[]; added: number; updated: number } {
+  const overwrite = !!opts?.overwriteSameName;
   const list = loadTakeoutDishes();
-  const seen = new Set(list.map((d) => `${d.restaurant}::${d.name}`));
-  const fresh = incoming.filter((d) => {
-    const key = `${d.restaurant}::${d.name}`;
-    if (seen.has(key) || !d.name?.trim()) return false;
-    seen.add(key);
-    return true;
-  });
-  const next = [...list, ...fresh.map((d) => ({ ...d, id: uuid() }))];
-  saveTakeoutDishes(next);
-  return { list: next, added: fresh.length };
+  const indexOf = new Map(list.map((d, i) => [dishKey(d), i]));
+
+  let added = 0;
+  let updated = 0;
+
+  for (const d of incoming) {
+    if (!d.name?.trim()) continue;
+    const key = dishKey(d);
+    const at = indexOf.get(key);
+    if (at === undefined) {
+      list.push({ ...d, id: uuid() });
+      indexOf.set(key, list.length - 1);
+      added++;
+    } else if (overwrite) {
+      // 复用旧 id，只替换内容
+      list[at] = { ...d, id: list[at].id };
+      updated++;
+    }
+    // 未开启覆盖且已存在 → 跳过（保持旧行为）
+  }
+
+  saveTakeoutDishes(list);
+  return { list, added, updated };
 }
 
 export function removeTakeoutDish(id: string) {
   saveTakeoutDishes(loadTakeoutDishes().filter((d) => d.id !== id));
+}
+
+/** 删除某个商家的全部菜品，返回删除后的完整列表 */
+export function removeTakeoutMerchant(restaurant: string): TakeoutDish[] {
+  const next = loadTakeoutDishes().filter((d) => d.restaurant !== restaurant);
+  saveTakeoutDishes(next);
+  return next;
+}
+
+/** 清空整个菜单库（不写种子） */
+export function clearTakeoutDishes(): TakeoutDish[] {
+  saveTakeoutDishes([]);
+  return [];
+}
+
+/**
+ * 导入菜品（可选先清空全库）。把"清空 + 写入"合成一次写操作，
+ * 避免中间出现"库为空"的短暂状态（那会被种子逻辑撞上）。
+ */
+export function importTakeoutDishes(
+  incoming: Omit<TakeoutDish, "id">[],
+  opts: { overwriteSameName?: boolean; clearFirst?: boolean },
+): { list: TakeoutDish[]; added: number; updated: number } {
+  if (opts.clearFirst) saveTakeoutDishes([]);
+  return addTakeoutDishes(incoming, { overwriteSameName: opts.overwriteSameName });
 }
 
 /** 修改一道菜；改完同商家同名会与别的菜撞车时拒绝（保持库内不重复） */
@@ -190,9 +262,44 @@ export function updateTakeoutDish(id: string, patch: Partial<Omit<TakeoutDish, "
   return true;
 }
 
-/** 清空并恢复到项目自带的示例库 */
+/** 清空并恢复到项目自带的示例库（唯一允许重新灌种子的入口，同时补上标记） */
 export function resetTakeoutDishes() {
   write(KEYS.takeoutMock, takeoutSeed as TakeoutDish[]);
+  write(KEYS.takeoutSeeded, true);
+}
+
+// ---------- 菜单库操作快照（撤销用） ----------
+
+/**
+ * 单槽撤销：只保留最近一次破坏性操作前的菜单库。
+ *
+ * 为什么是单槽而不是栈：快照存的是整份菜单库（几十条），多份会让备份明显膨胀，
+ * 而实际需要的是"哎我刚删错了"这一次。键在 recipe. 前缀内，
+ * 因此会被备份导出带上，也会被「清空全部数据」一并清掉（语义一致）。
+ */
+export type TakeoutUndo = {
+  reason: string;
+  at: number;
+  dishes: TakeoutDish[];
+};
+
+export function pushTakeoutUndo(reason: string, dishes: TakeoutDish[]) {
+  const snap: TakeoutUndo = { reason, at: Date.now(), dishes };
+  write(KEYS.takeoutUndo, snap);
+}
+
+export function peekTakeoutUndo(): TakeoutUndo | null {
+  const snap = read<TakeoutUndo | null>(KEYS.takeoutUndo, null);
+  return snap && Array.isArray(snap.dishes) ? snap : null;
+}
+
+/** 恢复快照并清空槽位（只能撤销一次） */
+export function popTakeoutUndo(): TakeoutDish[] | null {
+  const snap = peekTakeoutUndo();
+  if (!snap) return null;
+  saveTakeoutDishes(snap.dishes);
+  write(KEYS.takeoutUndo, null);
+  return snap.dishes;
 }
 
 // ---------- 健康档案 ----------
