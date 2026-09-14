@@ -11,8 +11,8 @@ import { fileToDataUrls, MAX_SLICES } from "../lib/image";
 import type { TakeoutDish } from "../lib/types";
 
 /** 一次最多接受多少「段」图片。长图会切成多段（普通手机截图也常被切成 2 段），
- *  所以比张数宽松；15 张以内接口的单边限制仍是 4096，而我们的段单边约 1600，安全。 */
-const MAX_SHOTS = 15;
+ *  所以比张数宽松；张数较多时接口的单边限制会降到 4096，而我们的段单边约 1600，安全。 */
+const MAX_SHOTS = 24;
 
 export default function TakeoutLibraryPage() {
   const [dishes, setDishes] = useState<TakeoutDish[]>([]);

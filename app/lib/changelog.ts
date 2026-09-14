@@ -15,6 +15,14 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.2",
+    date: "2026-09-15",
+    highlights: [
+      "极长的菜单截图（如整页外卖菜单）改为保持原清晰度切段，不再整体缩小",
+      "普通截图与长图都按模型的最佳分辨率切，菜名和价格看得更清",
+    ],
+  },
+  {
     version: "1.5.1",
     date: "2026-09-14",
     highlights: [
