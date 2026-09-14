@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.1",
+    date: "2026-09-14",
+    highlights: [
+      "修好了长截图导入失败（提示“图片格式不支持”那个报错）",
+      "长截图现在会自动切成多段分别识别，菜名和价格比过去清楚得多",
+      "图片相关的报错改成中文提示，并告诉你怎么处理（比如拆成 2~3 段再传）",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-09-14",
     highlights: [

@@ -7,7 +7,12 @@ import { EditDishDialog } from "../components/EditDishDialog";
 import { importTakeout } from "../lib/ai";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
 import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, renameTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
+import { fileToDataUrls, MAX_SLICES } from "../lib/image";
 import type { TakeoutDish } from "../lib/types";
+
+/** 一次最多接受多少「段」图片。长图会切成多段（普通手机截图也常被切成 2 段），
+ *  所以比张数宽松；15 张以内接口的单边限制仍是 4096，而我们的段单边约 1600，安全。 */
+const MAX_SHOTS = 15;
 
 export default function TakeoutLibraryPage() {
   const [dishes, setDishes] = useState<TakeoutDish[]>([]);
@@ -46,27 +51,35 @@ export default function TakeoutLibraryPage() {
     setUndo(peekTakeoutUndo());
   }, []);
 
-  /** 压缩到宽 1600 的 JPEG，控制上传体积 */
-  async function fileToDataUrl(file: File): Promise<string> {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, 1600 / bitmap.width);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.85);
-  }
-
+  /**
+   * 读图并按需切段。长图会被切成多段（见 lib/image.ts 的说明），
+   * 返回的每个 dataURL 都作为一张独立图片发给视觉模型。
+   */
   async function addShotFiles(files: FileList | File[]) {
     const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (imgs.length === 0) return;
     setImportErr("");
+    setImportMsg("");
     try {
-      const dataUrls = await Promise.all(imgs.slice(0, 5).map(fileToDataUrl));
-      setShots((prev) => [...prev, ...dataUrls].slice(0, 5));
-      if (imgs.length > 5) setImportMsg("一次最多 5 张，超出部分已忽略");
-    } catch {
-      setImportErr("图片读取失败，换一张试试");
+      const parts: string[] = [];
+      let sliced = 0;
+      for (const f of imgs) {
+        const urls = await fileToDataUrls(f);
+        if (urls.length > 1) sliced += urls.length;
+        parts.push(...urls);
+      }
+      const room = MAX_SHOTS - shots.length;
+      if (room <= 0) {
+        setImportErr(`一次最多 ${MAX_SHOTS} 段图片，请先移除一些再添加`);
+        return;
+      }
+      setShots((prev) => [...prev, ...parts].slice(0, MAX_SHOTS));
+      if (parts.length > room) setImportMsg(`一次最多 ${MAX_SHOTS} 段，超出部分已忽略`);
+      else if (sliced >= MAX_SLICES)
+        setImportMsg(`图片极长，已整体缩小并切成 ${sliced} 段（保证内容完整，清晰度略有下降）`);
+      else if (sliced > 0) setImportMsg(`检测到长图，已自动切成 ${sliced} 段（会作为多张图一起识别）`);
+    } catch (e: any) {
+      setImportErr(e?.message || "图片读取失败，换一张试试");
     }
   }
 
