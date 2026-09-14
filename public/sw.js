@@ -1,10 +1,13 @@
 /* 今天吃什么呀 —— 离线缓存 Service Worker
    只缓存同源静态资源；DeepSeek 等跨域请求一律直连，不缓存。
 
-   版本化：CACHE 名里的 __BUILD__ 由 部署.bat 在每次发布时替换成时间戳。
-   SW 字节一变浏览器就会更新它，activate 清掉旧版本缓存 ——
+   版本化：下面两行常量在源码里是占位符，由 部署.bat 发布时从 package.json
+   读取 App 版本号、并生成构建号后替换（详见 CHANGELOG.md 与 部署.bat）。
+   缓存名带版本与构建号，SW 字节一变浏览器就会更新它，activate 会清掉旧缓存 ——
    保证部署后客户端不会一直卡在旧资源上。 */
-const CACHE = "recipe-__BUILD__";
+const APP_VERSION = "__VERSION__";
+const BUILD_ID = "__BUILD__";
+const CACHE = `recipe-v${APP_VERSION}-${BUILD_ID}`;
 const CORE = ["./", "./health/", "./takeout/", "./weekly/"];
 
 self.addEventListener("install", (event) => {
@@ -29,8 +32,9 @@ self.addEventListener("activate", (event) => {
       })
       .then((isUpgrade) => {
         if (!isUpgrade) return;
+        // 广播带上新版本号，页面据此显示「发现新版本 1.0.0 → 1.0.1」
         self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
-          clients.forEach((client) => client.postMessage({ type: "SW_UPDATED" }));
+          clients.forEach((client) => client.postMessage({ type: "SW_UPDATED", version: APP_VERSION }));
         });
       }),
   );

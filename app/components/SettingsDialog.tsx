@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { loadApiKeys, saveApiKeys, type ApiKeys } from "../lib/apiKeys";
 import { backupToText, clearAllData, describeBackup, downloadBackup, importBackup } from "../lib/backup";
 import { forceRefresh } from "../lib/forceUpdate";
+import { CHANGELOG } from "../lib/changelog";
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [keys, setKeys] = useState<ApiKeys>({});
@@ -15,6 +16,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const [importText, setImportText] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  /** 更新日志是否展开 */
+  const [showLog, setShowLog] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -191,19 +194,51 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
           {tab === "about" && (
             <>
+              <div className="mb-3 rounded-2xl p-3 text-xs leading-6" style={{ background: "var(--heal-blue-50)", color: "var(--heal-blue-text)" }}>
+                <div className="flex items-baseline justify-between">
+                  <span>版本</span>
+                  <b className="text-sm">{process.env.NEXT_PUBLIC_APP_VERSION || "本地开发"}</b>
+                </div>
+                <div className="flex items-baseline justify-between" style={{ opacity: 0.8 }}>
+                  <span>构建</span>
+                  <span>{process.env.NEXT_PUBLIC_BUILD_TIME || "—"}</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowLog((v) => !v)}
+                className="heal-btn heal-btn-ghost mb-2 w-full px-3 py-2 text-xs"
+              >
+                📋 本次更新内容 {showLog ? "▴" : "▾"}
+              </button>
+
+              {showLog && (
+                <div className="mb-3 flex flex-col gap-3">
+                  {CHANGELOG.map((r) => (
+                    <div key={r.version} className="rounded-2xl p-3" style={{ background: "var(--heal-amber-50)" }}>
+                      <div className="mb-1 text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                        {r.version}
+                        <span className="ml-2 font-normal" style={{ color: "var(--heal-muted)" }}>
+                          {r.date}
+                        </span>
+                      </div>
+                      <ul className="flex flex-col gap-1">
+                        {r.highlights.map((h) => (
+                          <li key={h} className="text-[11px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
+                            · {h}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <p className="mb-3 text-xs leading-5" style={{ color: "var(--heal-muted)" }}>
                 如果首页一直没出现「发现新版本」，或者点了没反应，用下面的「强制刷新」。
                 它会清掉页面缓存并重新下载（<b>不会动你的档案和记录</b>）。
               </p>
-
-              <div className="mb-3 rounded-2xl p-3 text-xs leading-6" style={{ background: "var(--heal-blue-50)", color: "var(--heal-blue-text)" }}>
-                <div>
-                  当前版本：<b>{process.env.NEXT_PUBLIC_BUILD_STAMP || "本地开发"}</b>
-                </div>
-                <div style={{ opacity: 0.8 }}>
-                  看到这个时间比较旧，就说明还在跑旧版，点下面的强制刷新。
-                </div>
-              </div>
 
               <button
                 type="button"

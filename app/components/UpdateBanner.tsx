@@ -24,6 +24,9 @@ function swUrl() {
  */
 export function UpdateBanner() {
   const [show, setShow] = useState(false);
+  /** 新版本号（SW 广播带过来），拿不到就为空 */
+  const [nextVersion, setNextVersion] = useState("");
+  const currentVersion = process.env.NEXT_PUBLIC_APP_VERSION || "";
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -40,14 +43,16 @@ export function UpdateBanner() {
     const reveal = () => {
       if (!dismissed) setShow(true);
     };
-    // 关键：在注册之前记录"页面是否已被旧 SW 控制"。
-    // 首次安装时 clients.claim() 会让页面马上有 controller，若在 activated 时才判断，
-    // 会把"刚刚装上最新版"误报成"发现新版本"。
-    const hadController = !!navigator.serviceWorker.controller;
 
     const onMessage = (e: MessageEvent) => {
-      // hadController 兜底：首次安装不该提示「发现新版本」
-      if (e.data?.type === "SW_UPDATED" && hadController) reveal();
+      // SW 只在"确实替换了旧版本"时才广播（它自己会判断有没有旧缓存），
+      // 所以这里可以直接信任——不要用页面挂载时的 controller 状态来判断，
+      // 那个值在"首访时无控制者、之后 SW 才接管"的场景下会过期，
+      // 导致横幅永远不显示（iOS 主屏 App 常驻后台不重载，最容易踩到）。
+      if (e.data?.type === "SW_UPDATED") {
+        if (typeof e.data.version === "string") setNextVersion(e.data.version);
+        reveal();
+      }
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
 
@@ -60,13 +65,16 @@ export function UpdateBanner() {
         reg = r;
 
         // 已经有新 SW 在等待接管（例如广播发出时页面还没挂载）
-        if (hadController && r.waiting) reveal();
+        if (r.waiting && r.active) reveal();
 
         r.addEventListener("updatefound", () => {
+          // 判断"这次是不是真升级"：updatefound 触发时若已有 active worker，
+          // 说明是旧版被替换；首次安装时 reg.active 还是 null。
+          // 用此刻的值判断，而不是页面挂载时的快照。
+          const isUpgrade = !!r.active;
           const nw = r.installing;
           nw?.addEventListener("statechange", () => {
-            // 只有"旧 SW 被新版替换"才是真更新，首次安装不算
-            if (nw.state === "activated" && hadController) reveal();
+            if (nw.state === "activated" && isUpgrade) reveal();
           });
         });
 
@@ -103,13 +111,19 @@ export function UpdateBanner() {
 
   if (!show) return null;
 
+  // 版本不同就把"从哪升到哪"说清楚；拿不到版本就退回通用文案
+  const versionText =
+    nextVersion && currentVersion && nextVersion !== currentVersion
+      ? `✨ 发现新版本 ${currentVersion} → ${nextVersion}`
+      : "✨ 发现新版本，点这里更新";
+
   return (
     <div
       className="heal-card mx-auto mb-4 flex w-full max-w-2xl items-center justify-between gap-2 p-3"
       style={{ background: "var(--heal-blue-50)" }}
     >
       <span className="text-xs leading-5" style={{ color: "var(--heal-blue-text)" }}>
-        ✨ 发现新版本，点这里更新
+        {versionText}
       </span>
       <div className="flex shrink-0 items-center gap-2">
         <button
