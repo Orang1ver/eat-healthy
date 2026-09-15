@@ -17,6 +17,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  /**
+   * 顶栏颜色只给一条（浅色）。深色改由运行期设置：主题可以被用户手动选成
+   * 浅色/深色/跟随系统，而 media 版的 meta 只能跟系统、跟不了手动选择。
+   * 首帧内联脚本贴 data-theme，app/lib/theme.ts 的 applyTheme 负责同步这条 meta。
+   */
   themeColor: "#FAC775",
   width: "device-width",
   initialScale: 1,
@@ -42,6 +47,20 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className="h-full antialiased">
       <head>
+        {/*
+          首帧防闪：在 React 之前同步把主题贴到 <html data-theme>。
+          不引 next-themes 之类的运行时依赖，几行内联脚本就够，也更可控。
+          ⚠️ 这段的判断必须与 app/lib/theme.ts 保持一致（那边负责运行期的切换与系统跟随）；
+          这里只管"第一笔绘制前别闪"，所以不碰 meta 标签（此时 head 还没排完）。
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var p=JSON.parse(localStorage.getItem('recipe.prefs.v1')||'{}');" +
+              "var c=p&&p.theme;var d=c==='dark'||(c!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);" +
+              "document.documentElement.dataset.theme=d?'dark':'light';}catch(e){}})();",
+          }}
+        />
         {SPLASH.map((s) => (
           <link
             key={`${s.w}x${s.h}`}

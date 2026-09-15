@@ -36,7 +36,7 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
     <div className="heal-card mb-4 p-4">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium">📊 今天</span>
-        <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+        <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
           最近 {DASH_DAYS} 天记录 {data.loggedDays} 天 · 达标 {data.hitDays} 天
         </span>
       </div>
@@ -47,17 +47,17 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
           <ProgressRing pct={wp.pct} done={wp.done} ariaLabel={`喝水已完成 ${wp.pct}%`}>
             <span className="text-xl font-medium" style={{ color: wp.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
               {wp.pct}
-              <span className="text-[10px]">%</span>
+              <span className="text-[11px]">%</span>
             </span>
-            <span className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+            <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
               💧 喝水
             </span>
           </ProgressRing>
-          <div className="mt-1.5 text-center text-[11px]">
+          <div className="mt-1.5 text-center text-[12px]">
             <b>{data.water}</b>
             <span style={{ color: "var(--heal-muted)" }}> / {data.targets.waterTarget} ml</span>
           </div>
-          <div className="text-center text-[10px]" style={{ color: wp.done ? "var(--heal-blue-text)" : "var(--heal-muted)" }}>
+          <div className="text-center text-[11px]" style={{ color: wp.done ? "var(--heal-blue-text)" : "var(--heal-muted)" }}>
             {wp.done ? "喝够啦 🎉" : `还差 ${wp.remaining}ml（约 ${cupsRemaining(wp.remaining, data.cupMl)} 杯）`}
           </div>
         </div>
@@ -66,17 +66,17 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
           <ProgressRing pct={sp.pct} done={sp.done} ariaLabel={`步数已完成 ${sp.pct}%`}>
             <span className="text-xl font-medium" style={{ color: sp.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
               {sp.pct}
-              <span className="text-[10px]">%</span>
+              <span className="text-[11px]">%</span>
             </span>
-            <span className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+            <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
               🚶 步数
             </span>
           </ProgressRing>
-          <div className="mt-1.5 text-center text-[11px]">
+          <div className="mt-1.5 text-center text-[12px]">
             <b>{data.steps}</b>
             <span style={{ color: "var(--heal-muted)" }}> / {data.targets.stepsTarget} 步</span>
           </div>
-          <div className="text-center text-[10px]" style={{ color: sp.done ? "var(--heal-blue-text)" : "var(--heal-muted)" }}>
+          <div className="text-center text-[11px]" style={{ color: sp.done ? "var(--heal-blue-text)" : "var(--heal-muted)" }}>
             {sp.done ? "走够啦 🎉" : `还差 ${sp.remaining} 步（约 ${stepsToKm(sp.remaining)}km）`}
           </div>
         </div>
@@ -84,7 +84,7 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
 
       {compact ? (
         /* 紧凑版（首页）：环 + 一行关键数字，不占整屏 */
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--heal-muted)" }}>
           <span>
             ⚖️ <b style={{ color: "var(--heal-amber-deep)" }}>{data.weightKg != null ? data.weightKg.toFixed(1) : "—"}</b> kg
             {data.weightDelta != null && <span style={{ color: deltaColor(data.weightDelta) }}> {deltaText(data.weightDelta)}</span>}
@@ -98,7 +98,7 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
         <>
           {/* 最近 7 天：两排柱子，每根的高度 = 当天 / 目标 */}
           <div className="mt-4 rounded-2xl p-2.5" style={{ background: "var(--heal-blue-50)" }}>
-            <div className="mb-2 flex items-center justify-between text-[11px]" style={{ color: "var(--heal-muted)" }}>
+            <div className="mb-2 flex items-center justify-between text-[12px]" style={{ color: "var(--heal-muted)" }}>
               <span>最近 7 天</span>
               <span>
                 日均 喝水 {data.avgWater}ml · 步数 {data.avgSteps}
@@ -109,7 +109,7 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
               { key: "steps" as const, emoji: "🚶", label: "步数" },
             ].map((row) => (
               <div key={row.key} className="mb-2 last:mb-0">
-                <div className="mb-1 text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                <div className="mb-1 text-[11px]" style={{ color: "var(--heal-muted)" }}>
                   {row.emoji} {row.label}
                 </div>
                 <div className="flex items-end gap-1">
@@ -124,7 +124,7 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
                             style={{ height: `${pct}%`, background: hit ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
                           />
                         </div>
-                        <span className="text-[9px]" style={{ color: "var(--heal-muted)" }}>
+                        <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
                           {d.dow.slice(1)}
                         </span>
                       </div>
@@ -138,14 +138,14 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
           {/* 体重：最新值 + 差值 + 迷你曲线（详细曲线仍在下面的体重卡里） */}
           <div className="mt-2.5 flex items-center gap-3 rounded-2xl p-2.5" style={{ background: "var(--heal-amber-50)" }}>
             <div className="shrink-0">
-              <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+              <div className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
                 ⚖️ 体重{data.weightDate ? ` ${data.weightDate.slice(5)}` : ""}
               </div>
               <div className="text-lg font-medium" style={{ color: "var(--heal-amber-deep)" }}>
                 {data.weightKg != null ? data.weightKg.toFixed(1) : "—"}
-                <span className="text-[10px]"> kg</span>
+                <span className="text-[11px]"> kg</span>
               </div>
-              <div className="text-[10px]" style={{ color: data.weightDelta != null ? deltaColor(data.weightDelta) : "var(--heal-muted)" }}>
+              <div className="text-[11px]" style={{ color: data.weightDelta != null ? deltaColor(data.weightDelta) : "var(--heal-muted)" }}>
                 {data.weightDelta != null ? `较上次 ${deltaText(data.weightDelta)}` : "只有一条记录"}
               </div>
             </div>
@@ -162,14 +162,14 @@ export function HealthDashboard({ reloadKey = 0, compact = false }: { reloadKey?
                 />
               </svg>
             ) : (
-              <p className="min-w-0 flex-1 text-[10px]" style={{ color: "var(--heal-muted)" }}>
+              <p className="min-w-0 flex-1 text-[11px]" style={{ color: "var(--heal-muted)" }}>
                 记满两天就有趋势线
               </p>
             )}
           </div>
 
           {/* 坚持与徽章 */}
-          <div className="mt-2.5 flex items-center justify-between gap-2 text-[11px]">
+          <div className="mt-2.5 flex items-center justify-between gap-2 text-[12px]">
             <span style={{ color: "var(--heal-muted)" }}>
               🔥 连续 <b style={{ color: "var(--heal-amber-deep)" }}>{data.streak}</b> 天 · 历史最长 {data.maxStreak} 天
             </span>

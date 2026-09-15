@@ -313,7 +313,7 @@ export default function TakeoutLibraryPage() {
               <input type="checkbox" checked={overwriteSameName} onChange={(e) => setOverwriteSameName(e.target.checked)} />
               同名菜品用新数据覆盖（价格变了就会更新）
             </label>
-            <label className="flex items-center gap-2 text-xs" style={{ color: clearBeforeImport ? "#b91c1c" : undefined }}>
+            <label className="flex items-center gap-2 text-xs" style={{ color: clearBeforeImport ? "var(--heal-danger)" : undefined }}>
               <input type="checkbox" checked={clearBeforeImport} onChange={(e) => setClearBeforeImport(e.target.checked)} />
               先清空整个菜单库再导入（只留这次导入的内容）
             </label>
@@ -357,13 +357,13 @@ export default function TakeoutLibraryPage() {
                 <button
                   type="button"
                   onClick={handleClearLibrary}
-                  className="heal-btn heal-btn-ghost px-2 py-1 text-[11px]"
-                  style={{ color: "#b91c1c" }}
+                  className="heal-btn heal-btn-ghost px-2 py-1 text-[12px]"
+                  style={{ color: "var(--heal-danger)" }}
                 >
                   🗑️ 清空
                 </button>
               )}
-              <button type="button" onClick={handleReset} className="heal-btn heal-btn-ghost px-2 py-1 text-[11px]">
+              <button type="button" onClick={handleReset} className="heal-btn heal-btn-ghost px-2 py-1 text-[12px]">
                 恢复示例库
               </button>
             </div>
@@ -375,17 +375,17 @@ export default function TakeoutLibraryPage() {
               className="mb-3 flex items-center justify-between gap-2 rounded-xl p-2"
               style={{ background: "var(--heal-amber-50)" }}
             >
-              <span className="text-[11px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
+              <span className="text-[12px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
                 ↩︎ 可撤销：{undo.reason}
               </span>
-              <button type="button" onClick={handleUndo} className="heal-btn heal-btn-ghost shrink-0 px-2 py-1 text-[11px]">
+              <button type="button" onClick={handleUndo} className="heal-btn heal-btn-ghost shrink-0 px-2 py-1 text-[12px]">
                 撤销
               </button>
             </div>
           )}
 
           {libMsg && (
-            <p className="mb-2 text-[11px] leading-5" style={{ color: "var(--heal-blue-text)" }}>
+            <p className="mb-2 text-[12px] leading-5" style={{ color: "var(--heal-blue-text)" }}>
               {libMsg}
             </p>
           )}
@@ -405,7 +405,7 @@ export default function TakeoutLibraryPage() {
                       <input
                         autoFocus
                         aria-label="商家名称"
-                        className="min-w-0 flex-1 rounded-full border px-2 py-0.5 text-xs"
+                        className="min-w-0 flex-1 rounded-full border px-2 py-1.5 text-xs"
                         value={renaming.value}
                         onChange={(e) => setRenaming({ from: restaurant, value: e.target.value })}
                         onKeyDown={(e) => {
@@ -418,11 +418,11 @@ export default function TakeoutLibraryPage() {
                         <button
                           type="button"
                           onClick={() => handleRenameMerchant(restaurant, renaming.value)}
-                          className="heal-btn heal-btn-primary px-2 py-0.5 text-[10px]"
+                          className="heal-btn heal-btn-primary px-2 py-1.5 text-[11px]"
                         >
                           保存
                         </button>
-                        <button type="button" onClick={() => setRenaming(null)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[10px]">
+                        <button type="button" onClick={() => setRenaming(null)} className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]">
                           取消
                         </button>
                       </div>
@@ -436,7 +436,7 @@ export default function TakeoutLibraryPage() {
                         <button
                           type="button"
                           onClick={() => setRenaming({ from: restaurant, value: restaurant })}
-                          className="heal-btn heal-btn-ghost px-2 py-0.5 text-[10px]"
+                          className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]"
                           title={`给「${restaurant}」改名（名下菜品一起改）`}
                         >
                           ✏️ 改名
@@ -444,8 +444,8 @@ export default function TakeoutLibraryPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveMerchant(restaurant, items.length)}
-                          className="heal-btn heal-btn-ghost px-2 py-0.5 text-[10px]"
-                          style={{ color: "#b91c1c" }}
+                          className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]"
+                          style={{ color: "var(--heal-danger)" }}
                           title={`删除「${restaurant}」的全部菜品`}
                         >
                           🗑️ 删除这家（{items.length} 道）
@@ -472,7 +472,7 @@ export default function TakeoutLibraryPage() {
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+          <p className="mt-3 text-[12px]" style={{ color: "var(--heal-muted)" }}>
             点任意菜品可以修改；点商家右侧可整家删除。删错了用上面的「撤销」挽回。
           </p>
         </div>

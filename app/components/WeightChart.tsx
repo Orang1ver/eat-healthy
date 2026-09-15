@@ -17,7 +17,7 @@ export function WeightChart({ entries, maxPoints = 30 }: { entries: WeightEntry[
   if (data.length < 2) {
     return (
       <div
-        className="flex h-28 items-center justify-center rounded-2xl text-[11px] leading-5"
+        className="flex h-28 items-center justify-center rounded-2xl text-[12px] leading-5"
         style={{ background: "var(--heal-blue-50)", color: "var(--heal-muted)" }}
       >
         记满两天就能看到趋势曲线

@@ -206,7 +206,7 @@ export default function Home() {
           </h1>
           <div className="flex items-center gap-2">
             {/* 本周回顾降级成一行小链接：它是饮食周报，不必和两个主入口抢位置 */}
-            <Link href="/weekly" className="text-[11px] underline" style={{ color: "var(--heal-muted)" }}>
+            <Link href="/weekly" className="text-[12px] underline" style={{ color: "var(--heal-muted)" }}>
               📅 回顾
             </Link>
             <button
@@ -393,7 +393,7 @@ export default function Home() {
             )}
           </div>
           {channel === "自己做" && (
-            <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+            <p className="mt-2 text-[12px]" style={{ color: "var(--heal-muted)" }}>
               已经吃过了？点「记一餐」直接记下来，不用生成推荐。
             </p>
           )}

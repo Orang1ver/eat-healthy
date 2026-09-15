@@ -65,7 +65,7 @@ export function EditDishDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
       <div className="heal-card flex max-h-[85vh] w-full max-w-md flex-col p-5" style={{ background: "var(--heal-card-bg)" }}>
         <h2 className="mb-1 text-base font-medium">✏️ 修改菜品</h2>
         <p className="mb-3 text-xs" style={{ color: "var(--heal-muted)" }}>
@@ -143,7 +143,7 @@ export function EditDishDialog({
               onClose();
             }}
             className="heal-btn heal-btn-ghost px-3 py-2 text-sm"
-            style={{ color: "#b91c1c" }}
+            style={{ color: "var(--heal-danger)" }}
           >
             🗑️ 删除
           </button>

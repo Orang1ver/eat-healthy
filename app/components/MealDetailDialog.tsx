@@ -52,7 +52,7 @@ export function MealDetailDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
       <div className="heal-card w-full max-w-md p-5">
         <div className="mb-1 flex items-baseline justify-between">
           <h2 className="text-base font-medium">{meal.title || meal.dishes[0]?.name || "这一餐"}</h2>

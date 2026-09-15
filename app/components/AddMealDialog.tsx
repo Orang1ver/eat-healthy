@@ -63,7 +63,7 @@ export function AddMealDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
       <div className="heal-card w-full max-w-md p-5">
         <h2 className="mb-3 text-base font-medium">手动补录这一餐</h2>
         <p className="mb-3 text-xs" style={{ color: "var(--heal-muted)" }}>

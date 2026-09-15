@@ -134,7 +134,7 @@ export function RewardDialog({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
@@ -171,7 +171,7 @@ export function RewardDialog({
               ? `${hero.emoji ?? ""} ${heroIsText ? hero.value : displayStreak} ${hero.unit ?? ""}`.trim()
               : `🔥 ${displayStreak} 天`}
           </div>
-          <div className="mt-1 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+          <div className="mt-1 text-[12px]" style={{ color: "var(--heal-muted)" }}>
             {hero?.caption ?? "连续达标"}
           </div>
         </motion.div>

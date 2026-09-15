@@ -136,7 +136,7 @@ export function UpdateBanner() {
             }
             setShow(false);
           }}
-          className="heal-btn heal-btn-ghost px-2 py-1 text-[11px]"
+          className="heal-btn heal-btn-ghost px-2 py-1 text-[12px]"
         >
           下次再说
         </button>

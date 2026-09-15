@@ -5,10 +5,13 @@ import { loadApiKeys, saveApiKeys, type ApiKeys } from "../lib/apiKeys";
 import { backupToText, clearAllData, describeBackup, downloadBackup, importBackup } from "../lib/backup";
 import { forceRefresh } from "../lib/forceUpdate";
 import { CHANGELOG } from "../lib/changelog";
+import { THEME_OPTIONS, loadThemeChoice, saveThemeChoice, type ThemeChoice } from "../lib/theme";
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [keys, setKeys] = useState<ApiKeys>({});
-  const [tab, setTab] = useState<"key" | "backup" | "about">("key");
+  const [tab, setTab] = useState<"key" | "theme" | "backup" | "about">("key");
+  /** 界面主题：跟随系统 / 浅色 / 深色（选了立刻生效，不必按保存） */
+  const [theme, setTheme] = useState<ThemeChoice>("system");
 
   // 备份
   const [includeKey, setIncludeKey] = useState(true);
@@ -22,6 +25,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   useEffect(() => {
     if (open) {
       setKeys(loadApiKeys());
+      setTheme(loadThemeChoice());
       setTab("key");
       setExportText("");
       setImportText("");
@@ -82,37 +86,75 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
       <div className="heal-card flex max-h-[85vh] w-full max-w-md flex-col p-5" style={{ background: "var(--heal-card-bg)" }}>
         <h2 className="mb-3 text-lg font-medium" style={{ color: "var(--foreground)" }}>
           ⚙️ 设置
         </h2>
 
-        <div className="mb-4 flex gap-2">
+        {/* 标签用 wrap 而不是把字挤小：4 个标签在窄屏上换两行，比缩成小字更好认 */}
+        <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setTab("key")}
-            className={`heal-btn flex-1 px-3 py-1.5 text-xs ${tab === "key" ? "heal-btn-feature" : "heal-btn-ghost"}`}
+            className={`heal-btn flex-1 whitespace-nowrap px-3 py-2 text-xs ${tab === "key" ? "heal-btn-feature" : "heal-btn-ghost"}`}
           >
             API Key
           </button>
           <button
             type="button"
+            onClick={() => setTab("theme")}
+            className={`heal-btn flex-1 whitespace-nowrap px-3 py-2 text-xs ${tab === "theme" ? "heal-btn-feature" : "heal-btn-ghost"}`}
+          >
+            界面
+          </button>
+          <button
+            type="button"
             onClick={() => setTab("backup")}
-            className={`heal-btn flex-1 px-3 py-1.5 text-xs ${tab === "backup" ? "heal-btn-feature" : "heal-btn-ghost"}`}
+            className={`heal-btn flex-1 whitespace-nowrap px-3 py-2 text-xs ${tab === "backup" ? "heal-btn-feature" : "heal-btn-ghost"}`}
           >
             数据备份
           </button>
           <button
             type="button"
             onClick={() => setTab("about")}
-            className={`heal-btn flex-1 px-3 py-1.5 text-xs ${tab === "about" ? "heal-btn-feature" : "heal-btn-ghost"}`}
+            className={`heal-btn flex-1 whitespace-nowrap px-3 py-2 text-xs ${tab === "about" ? "heal-btn-feature" : "heal-btn-ghost"}`}
           >
             版本
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
+          {tab === "theme" && (
+            <>
+              <p className="mb-3 text-xs leading-5" style={{ color: "var(--heal-muted)" }}>
+                选好立刻生效，只存在这台设备上（会跟着备份一起走）。
+              </p>
+              <div className="flex flex-col gap-2">
+                {THEME_OPTIONS.map((o) => {
+                  const on = theme === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => setTheme(saveThemeChoice(o.key))}
+                      aria-pressed={on}
+                      className={`heal-btn flex items-center justify-between gap-3 px-4 py-2.5 text-sm ${on ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                    >
+                      <span className="whitespace-nowrap">{o.label}</span>
+                      <span className="min-w-0 truncate text-[11px] font-normal" style={{ color: on ? "var(--heal-amber-text)" : "var(--heal-muted)" }}>
+                        {on ? "使用中" : o.hint}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-[11px] leading-5" style={{ color: "var(--heal-muted)" }}>
+                选「跟随系统」时，手机切到深色它会跟着切；页面加载时也不会先闪一下白底。
+              </p>
+            </>
+          )}
+
           {tab === "key" && (
             <>
               <p className="mb-4 text-xs leading-5" style={{ color: "var(--heal-muted)" }}>
@@ -128,7 +170,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 onChange={(e) => setKeys((k) => ({ ...k, deepseekKey: e.target.value }))}
                 style={{ borderColor: "var(--heal-card-border)" }}
               />
-              <p className="text-[11px] leading-5" style={{ color: "var(--heal-muted)" }}>
+              <p className="text-[12px] leading-5" style={{ color: "var(--heal-muted)" }}>
                 在 platform.deepseek.com 注册后创建。推荐与截图识别用同一个 Key。
               </p>
             </>
@@ -160,7 +202,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                   rows={3}
                   value={exportText}
                   onFocus={(e) => e.currentTarget.select()}
-                  className="mb-3 w-full rounded-xl border p-2 text-[10px] leading-4"
+                  className="mb-3 w-full rounded-xl border p-2 text-[11px] leading-4"
                   style={{ borderColor: "var(--heal-card-border)" }}
                 />
               )}
@@ -171,7 +213,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
                 placeholder="粘贴备份 JSON 内容"
-                className="mb-2 w-full rounded-xl border p-2 text-[10px] leading-4"
+                className="mb-2 w-full rounded-xl border p-2 text-[11px] leading-4"
                 style={{ borderColor: "var(--heal-card-border)" }}
               />
               <div className="mb-3 flex flex-wrap gap-2">
@@ -183,7 +225,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 </button>
               </div>
 
-              <button type="button" onClick={doClear} className="heal-btn heal-btn-ghost px-3 py-2 text-xs" style={{ color: "#b91c1c" }}>
+              <button type="button" onClick={doClear} className="heal-btn heal-btn-ghost px-3 py-2 text-xs" style={{ color: "var(--heal-danger)" }}>
                 🗑️ 清空本机所有数据
               </button>
 
@@ -225,7 +267,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                       </div>
                       <ul className="flex flex-col gap-1">
                         {r.highlights.map((h) => (
-                          <li key={h} className="text-[11px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
+                          <li key={h} className="text-[12px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
                             · {h}
                           </li>
                         ))}

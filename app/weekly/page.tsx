@@ -108,13 +108,13 @@ export default function WeeklyPage() {
                   <div className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
                     {WEEKDAY_LABELS[i]}
                   </div>
-                  <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
                     {d.slice(5)}
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col gap-1">
                   {dayMeals.length === 0 && (
-                    <div className="py-2 text-center text-[10px]" style={{ color: "var(--heal-card-border)" }}>
+                    <div className="py-2 text-center text-[11px]" style={{ color: "var(--heal-card-border)" }}>
                       还没有记录
                     </div>
                   )}
@@ -123,7 +123,7 @@ export default function WeeklyPage() {
                       key={m.id}
                       type="button"
                       onClick={() => setSelected(m)}
-                      className="rounded-lg px-1.5 py-1 text-left text-[10px] leading-tight"
+                      className="rounded-lg px-1.5 py-1 text-left text-[11px] leading-tight"
                       style={
                         m.source === "manual"
                           ? { background: "var(--heal-blue-50)", color: "var(--heal-blue-text)" }
@@ -141,7 +141,7 @@ export default function WeeklyPage() {
                 <button
                   type="button"
                   onClick={() => setAddTarget(d)}
-                  className="heal-btn mt-2 py-1 text-[11px]"
+                  className="heal-btn mt-2 py-1 text-[12px]"
                   style={{ borderRadius: 8, border: "1px dashed var(--heal-card-border)", color: "var(--heal-muted)", background: "transparent" }}
                 >
                   + 添加
