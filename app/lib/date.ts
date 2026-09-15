@@ -26,6 +26,13 @@ export function addDays(dateISO: string, days: number): string {
   return formatDateISO(d);
 }
 
+/**
+ * 补录窗口：最多可往前补多少天。
+ * 打卡与体重共用这一处 —— 两边能补到哪天必须一致，否则用户会发现同一天在
+ * 打卡卡补得了、在体重卡却补不了（或反之）。
+ */
+export const BACKFILL_DAYS = 30;
+
 export const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
 /** 给定周一日期，返回该周 7 天的 ISO 日期数组 */

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { todayISO, weekStartOf, addDays, WEEKDAY_LABELS, weekDates } from "../lib/date";
+import { todayISO, weekStartOf, addDays, WEEKDAY_LABELS, weekDates, BACKFILL_DAYS } from "../lib/date";
 import { loadHealthProfile, loadCheckin, saveCheckin, saveHealthProfile, getCheckinsInWeek, loadRewards, saveRewards } from "../lib/storage";
 import { ACTIVITY_LEVELS, HEALTH_GOALS, calcDailyTargets } from "../lib/health";
 import {
@@ -23,18 +23,24 @@ const RewardDialog = dynamic(() => import("../components/RewardDialog").then((m)
   ssr: false,
 });
 import {
+  CUP_MAX,
+  CUP_MIN,
+  CUP_PRESETS,
   CURRENT_STEP_SOURCE,
-  CUP_ML,
+  DEFAULT_CUP_ML,
   STEP_MAX,
   STEP_PRESETS,
   STEP_SOURCE_LABEL,
+  clampCupMl,
   clampSteps,
+  cupsToMl,
   mlToCups,
   progressOf,
   stepsProgressText,
   stepsToKm,
   waterProgressText,
 } from "../lib/steps";
+import { loadPrefs, savePrefs } from "../lib/prefs";
 import type { ActivityLevel, DailyCheckin, HealthGoal, HealthProfile, RewardState, Sex } from "../lib/types";
 
 const MOODS: { key: NonNullable<DailyCheckin["mood"]>; emoji: string }[] = [
@@ -42,9 +48,6 @@ const MOODS: { key: NonNullable<DailyCheckin["mood"]>; emoji: string }[] = [
   { key: "一般", emoji: "😐" },
   { key: "累", emoji: "😫" },
 ];
-
-/** 最多可往前补录多少天 */
-const BACKFILL_DAYS = 30;
 
 export default function HealthPage() {
   const [profile, setProfile] = useState<HealthProfile | null>(null);
@@ -69,6 +72,15 @@ export default function HealthPage() {
   const viewingToday = selectedDate === today;
   /** 补录成功后的轻提示（不弹庆祝弹窗） */
   const [backfillMsg, setBackfillMsg] = useState("");
+
+  /**
+   * 我的杯子容量（ml）。存在独立的偏好键里、与健康档案无关 —— 没填档案时喝水卡也在用。
+   * 数字输入一律用字符串 state（老坑：value={number} 会删不掉、永远留个 0）。
+   */
+  const [cupMl, setCupMl] = useState(DEFAULT_CUP_ML);
+  const [cupDraft, setCupDraft] = useState("");
+  /** 「直接加多少 ml」输入框 */
+  const [customMl, setCustomMl] = useState("");
 
   /** 能补录的最早日期：今天往前 30 天 */
   const earliestDate = addDays(today, -BACKFILL_DAYS);
@@ -100,6 +112,9 @@ export default function HealthPage() {
       setConditions(p.conditions);
     }
     setRewards(loadRewards());
+    const prefs = loadPrefs();
+    setCupMl(prefs.cupMl);
+    setCupDraft(String(prefs.cupMl));
   }, []);
 
   // 切换日期：载入该日数据、让本周格子跟随、清掉上一条提示
@@ -172,6 +187,37 @@ export default function HealthPage() {
   // 已拥有的徽章（回看庆祝时展示"我的徽章"）
   const ownedBadges = BADGES.filter((b) => rewards.badges[b.id]);
 
+  /** 喝水加量：非法值直接忽略，不写库 */
+  function addWater(ml: number) {
+    if (!Number.isFinite(ml) || ml <= 0) return;
+    updateCheckin({ waterMl: water + Math.round(ml) });
+  }
+
+  /** 自定义 ml：记完就清空，方便连着记第二笔 */
+  function addCustomWater() {
+    if (!customMlValid) return;
+    addWater(Number(customMl));
+    setCustomMl("");
+  }
+
+  /** 换杯子：写库并同步 state，换算与快捷按钮立刻跟着变 */
+  function changeCup(n: number) {
+    const next = savePrefs({ cupMl: clampCupMl(n) }).cupMl;
+    setCupMl(next);
+    setCupDraft(String(next));
+  }
+
+  /** 自定义杯容量：失焦或回车才提交；空串/非法值丢弃并还原显示，不写库 */
+  function commitCupDraft() {
+    const n = Number(cupDraft);
+    if (cupDraft.trim() === "" || !Number.isFinite(n) || n <= 0) {
+      setCupDraft(String(cupMl));
+      return;
+    }
+    changeCup(n);
+  }
+
+  const customMlValid = customMl.trim() !== "" && Number(customMl) > 0 && Number(customMl) <= 3000;
   const water = checkin?.waterMl ?? 0;
   const steps = checkin?.steps ?? 0;
   const waterTarget = targets?.waterTarget ?? 2000;
@@ -250,7 +296,7 @@ export default function HealthPage() {
             <div className="mb-1 flex items-baseline justify-between text-xs">
               <span>💧 喝水</span>
               <span style={{ color: "var(--heal-muted)" }}>
-                {water} / {waterTarget} ml（约 {mlToCups(water)} 杯）
+                {water} / {waterTarget} ml（约 {mlToCups(water, cupMl)} 杯 · 一杯 {cupMl}ml）
               </span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
@@ -260,18 +306,79 @@ export default function HealthPage() {
               />
             </div>
             <p className="mt-1 text-[11px] font-medium" style={{ color: waterProgress.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
-              {waterProgressText(waterProgress)}
+              {waterProgressText(waterProgress, cupMl)}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" onClick={() => updateCheckin({ waterMl: water + CUP_ML })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-                +1 杯(250ml)
+              <button type="button" onClick={() => addWater(cupsToMl(1, cupMl))} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                +1 杯（{cupMl}ml）
               </button>
-              <button type="button" onClick={() => updateCheckin({ waterMl: water + 500 })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-                +500ml
+              <button type="button" onClick={() => addWater(cupsToMl(0.5, cupMl))} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                +½ 杯（{cupsToMl(0.5, cupMl)}ml）
               </button>
-              <button type="button" onClick={() => updateCheckin({ waterMl: Math.max(0, water - CUP_ML) })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-                -1 杯
+              <button type="button" onClick={() => addWater(500)} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                +500ml（一瓶）
               </button>
+              <button type="button" onClick={() => updateCheckin({ waterMl: Math.max(0, water - cupMl) })} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                −1 杯
+              </button>
+            </div>
+
+            {/* 不用「杯」算的人可以直接加 ml（加法语义，与步数那种"设总量"不同） */}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={3000}
+                className="w-24 rounded-full border px-3 py-1.5 text-xs"
+                placeholder="＋___ ml"
+                value={customMl}
+                onChange={(e) => setCustomMl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addCustomWater()}
+                style={{ borderColor: "var(--heal-card-border)" }}
+              />
+              <button type="button" disabled={!customMlValid} onClick={addCustomWater} className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
+                记一笔
+              </button>
+            </div>
+
+            {/* 我的杯子：一杯多少自己定，记忆在本机（改杯子不影响已记录的水量） */}
+            <div className="mt-3 rounded-xl p-2" style={{ background: "var(--heal-blue-50)" }}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  我的杯子
+                </span>
+                {CUP_PRESETS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => changeCup(n)}
+                    className={`heal-btn px-2 py-0.5 text-[11px] ${cupMl === n ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                  >
+                    {n}ml
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={CUP_MIN}
+                  max={CUP_MAX}
+                  step={10}
+                  value={cupDraft}
+                  placeholder="自定义"
+                  onChange={(e) => setCupDraft(e.target.value)}
+                  onBlur={commitCupDraft}
+                  onKeyDown={(e) => e.key === "Enter" && commitCupDraft()}
+                  className="w-20 rounded-full border px-2 py-0.5 text-center text-[11px]"
+                  style={{ borderColor: "var(--heal-card-border)" }}
+                />
+                <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  ml（100-1000）
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] leading-4" style={{ color: "var(--heal-muted)" }}>
+                换杯子只影响换算和上面的快捷按钮；已记录的水量不变（记的是 ml）
+              </p>
             </div>
           </div>
 

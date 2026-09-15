@@ -105,6 +105,7 @@ export function describeBackup(text: string): string {
   if (has("healthProfile")) parts.push("健康档案");
   if (has("dailyCheckins")) parts.push("打卡记录");
   if (has("rewards")) parts.push("打卡奖励");
+  if (has("prefs")) parts.push("偏好设置");
   if (has("weights")) parts.push("体重记录");
   if (has("exercise")) parts.push("运动记录");
   if (has("mealRecords")) parts.push("饮食记录");

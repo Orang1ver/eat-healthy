@@ -17,6 +17,38 @@ export function latestWeight(all: Record<string, WeightEntry>): WeightEntry | nu
   return list.length ? list[list.length - 1] : null;
 }
 
+/** 某一天的记录（没有则 null） */
+export function entryOn(all: Record<string, WeightEntry>, dateISO: string): WeightEntry | null {
+  return all[dateISO] ?? null;
+}
+
+/** 严格早于该日期的最近一条记录 —— 补录那天的"上一次"就是它 */
+export function latestBefore(all: Record<string, WeightEntry>, dateISO: string): WeightEntry | null {
+  const list = sortWeights(all).filter((e) => e.date < dateISO);
+  return list.length ? list[list.length - 1] : null;
+}
+
+/**
+ * 记录某天时的起始草稿值：
+ * 该日已有 → 用已记的值；否则用更早的最近一条做起点；再否则用最新一条；
+ * 再否则用健康档案里的体重；最后兜底 60。
+ *
+ * 为什么要这串兜底：补录时若从 60kg 起步，用户得连点几十下才到自己的体重。
+ */
+export function baselineForDate(
+  all: Record<string, WeightEntry>,
+  dateISO: string,
+  fallbackWeight: number | null,
+): number {
+  const on = entryOn(all, dateISO);
+  if (on) return round1(on.weightKg);
+  const before = latestBefore(all, dateISO);
+  if (before) return round1(before.weightKg);
+  const latest = latestWeight(all);
+  if (latest) return round1(latest.weightKg);
+  return round1(fallbackWeight ?? 60);
+}
+
 export type Delta = {
   /** 差值（正为增重，负为减重） */
   diff: number;
