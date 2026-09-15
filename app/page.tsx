@@ -12,7 +12,7 @@ import { TakeoutCard } from "./components/TakeoutCard";
 import { recommend, takeoutRecommend } from "./lib/ai";
 import { getDisabledTags } from "./lib/mutualExclusion";
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./lib/tags";
-import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
+import { addCommonIngredient, addMealRecord, getMealsInWeek, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
 import { buildHealthContext, calcDailyTargets } from "./lib/health";
 import { HealthDashboard } from "./components/HealthDashboard";
 import { TopTabs } from "./components/TopTabs";
@@ -53,10 +53,13 @@ export default function Home() {
 
   /** 有没有健康档案：没有就给一句引导，有则交给仪表盘组件（它自己读 localStorage） */
   const [hasProfile, setHasProfile] = useState(false);
+  /** 本周回顾入口上那句摘要用：这周记了几餐 */
+  const [weekMealCount, setWeekMealCount] = useState(0);
 
   useEffect(() => {
     setCommonIngredients(loadCommonIngredients());
     setHasProfile(!!loadHealthProfile());
+    setWeekMealCount(getMealsInWeek(weekStartOf(todayISO())).length);
   }, []);
 
   // 把健康档案 + 今日打卡拼成上下文，随每次推荐发给 AI
@@ -205,10 +208,6 @@ export default function Home() {
             🥗 今天吃什么呀
           </h1>
           <div className="flex items-center gap-2">
-            {/* 本周回顾降级成一行小链接：它是饮食周报，不必和两个主入口抢位置 */}
-            <Link href="/weekly" className="text-[12px] underline" style={{ color: "var(--heal-muted)" }}>
-              📅 回顾
-            </Link>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -236,6 +235,20 @@ export default function Home() {
             <span className="shrink-0 text-lg">›</span>
           </Link>
         )}
+
+        {/* 本周回顾：整行入口卡。原先只是标题旁边一个 11px 的下划线小链接 —— 太小了，
+            是 1.5.5 给主入口让位时留下的，这里改回"正经入口"并顺手给一句本周摘要 */}
+        <Link href="/weekly" className="heal-card mb-4 flex items-center justify-between gap-3 p-3.5">
+          <div className="min-w-0">
+            <div className="text-sm font-medium">📅 本周回顾</div>
+            <div className="mt-0.5 text-xs leading-5" style={{ color: "var(--heal-muted)" }}>
+              {weekMealCount > 0 ? `这周已经记了 ${weekMealCount} 餐 · 看看吃得怎么样` : "这周还没记饭 · 记一餐就能回顾"}
+            </div>
+          </div>
+          <span className="shrink-0 text-lg" style={{ color: "var(--heal-muted)" }}>
+            ›
+          </span>
+        </Link>
 
         <div className="mb-4 flex gap-2">
           <button

@@ -18,6 +18,14 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.6.2",
+    date: "2026-09-15",
+    highlights: [
+      "首页的「本周回顾」改成整行入口，顺便显示这周记了几餐",
+      "周回顾页的字和按钮都放大了一档，手机上更好点",
+    ],
+  },
+  {
     version: "1.6.1",
     date: "2026-09-15",
     highlights: ["深色不再黑成一片：整体提亮两档，卡片、面板和强调色都跳出来"],
