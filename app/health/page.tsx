@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { todayISO, weekStartOf, addDays, WEEKDAY_LABELS, weekDates, BACKFILL_DAYS } from "../lib/date";
 import { loadHealthProfile, loadCheckin, saveCheckin, saveHealthProfile, getCheckinsInWeek, loadRewards, saveRewards } from "../lib/storage";
@@ -19,6 +18,7 @@ import {
 import { WeightCard } from "../components/WeightCard";
 import { ExerciseCard } from "../components/ExerciseCard";
 import { HealthDashboard } from "../components/HealthDashboard";
+import { TopTabs } from "../components/TopTabs";
 // 懒加载：motion + 彩带库只在庆祝弹窗打开时才下载，不拖慢健康页首屏
 const RewardDialog = dynamic(() => import("../components/RewardDialog").then((m) => m.RewardDialog), {
   ssr: false,
@@ -241,14 +241,15 @@ export default function HealthPage() {
   return (
     <main className="min-h-screen p-4 md:p-8" style={{ background: "var(--heal-bg)" }}>
       <div className="mx-auto max-w-2xl">
-        <header className="mb-4 flex items-center justify-between">
+        <header className="mb-3 flex items-center justify-between">
           <h1 className="text-xl font-medium" style={{ fontFamily: "var(--font-serif, serif)" }}>
             💪 健康小屋
           </h1>
-          <Link href="/" className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-            ← 返回首页
-          </Link>
         </header>
+
+        {/* 与首页同一对平级入口：在健康小屋也能一键回到"今天吃什么"
+            （原来这里是个「← 返回首页」小按钮，现在由 tab 承担） */}
+        <TopTabs active="health" />
 
         {/* 仪表盘：进度环（喝水/步数）+ 最近 7 天趋势条 + 体重迷你曲线 + 连续与徽章。
             没填档案时它自己不渲染（下面的蓝色引导卡会告诉用户先填档案）。 */}

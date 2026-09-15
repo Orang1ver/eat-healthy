@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.5",
+    date: "2026-09-15",
+    highlights: [
+      "「今天吃什么」与「健康小屋」变成两个平级大入口，两个页面都能一键互切",
+      "首页右上角只留设置和一个小小的「回顾」链接，不再三个按钮挤在一起",
+      "健康小屋顶部原来的「← 返回首页」由新 tab 代替",
+    ],
+  },
+  {
     version: "1.5.4",
     date: "2026-09-15",
     highlights: [
