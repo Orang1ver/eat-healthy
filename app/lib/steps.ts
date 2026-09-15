@@ -51,11 +51,42 @@ export function stepsToKm(steps: number): number {
 
 // ---------- 喝水 ----------
 
-export const CUP_ML = 250;
+/**
+ * 喝水按「杯」录入，但**一杯是多少由用户自己定**：一次性纸杯约 200ml、家用玻璃杯
+ * 250~300ml、保温杯 400~500ml、矿泉水瓶 500ml 上下 —— 写死一个值总有人对不上，
+ * 于是"＋1 杯"记的其实是错的量。
+ *
+ * 约定：**ml 是唯一的存储单位**（DailyCheckin.waterMl），「杯」只是显示与快捷按钮的
+ * 换算层。所以换杯子只影响换算与按钮，不会改动任何已记录的水量，也就不需要数据迁移。
+ */
+export const DEFAULT_CUP_ML = 250;
 
-/** 把毫升换算成"几杯"（一杯按 250ml），用于比 ml 更直观的提示 */
-export function mlToCups(ml: number): number {
-  return Math.round((ml / CUP_ML) * 10) / 10;
+/** 杯容量快选档位（覆盖纸杯 / 玻璃杯 / 保温杯 / 水瓶） */
+export const CUP_PRESETS = [150, 200, 250, 300, 400, 500];
+
+export const CUP_MIN = 100;
+export const CUP_MAX = 1000;
+
+/** 归一化杯容量：非法值回落到默认，夹在 100~1000，取整到 10ml */
+export function clampCupMl(n: number): number {
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_CUP_ML;
+  return Math.round(Math.min(CUP_MAX, Math.max(CUP_MIN, n)) / 10) * 10;
+}
+
+/** 把毫升换算成"几杯"，用于比 ml 更直观的提示 */
+export function mlToCups(ml: number, cupMl: number = DEFAULT_CUP_ML): number {
+  return Math.round((ml / clampCupMl(cupMl)) * 10) / 10;
+}
+
+/** 几杯换算成毫升（快捷按钮用） */
+export function cupsToMl(cups: number, cupMl: number): number {
+  return Math.max(0, Math.round(cups * clampCupMl(cupMl)));
+}
+
+/** 还差几杯：向上取整（杯是整数才好使），已经喝够则为 0 */
+export function cupsRemaining(remainingMl: number, cupMl: number): number {
+  if (remainingMl <= 0) return 0;
+  return Math.ceil(remainingMl / clampCupMl(cupMl));
 }
 
 // ---------- 进度文案 ----------
@@ -75,10 +106,15 @@ export function progressOf(current: number, target: number): Progress {
   return { current, target, pct, remaining, done: current >= target };
 }
 
-/** 喝水的进度文案，例如「还差 3 杯」 */
-export function waterProgressText(progress: Progress): string {
+/**
+ * 喝水的进度文案，例如「还差 301ml（约 2 杯）」。
+ *
+ * 为什么把 ml 放前面：杯数向上取整，200ml 的杯子"2 杯"是 400ml，
+ * 写成「还差 2 杯（约 301ml）」自己跟自己打架。ml 是实际要喝的量，杯只是直观参考。
+ */
+export function waterProgressText(progress: Progress, cupMl: number = DEFAULT_CUP_ML): string {
   if (progress.done) return "今天喝够啦 🎉";
-  return `还差 ${Math.ceil(progress.remaining / CUP_ML)} 杯（约 ${progress.remaining}ml）`;
+  return `还差 ${progress.remaining} ml（约 ${cupsRemaining(progress.remaining, cupMl)} 杯）`;
 }
 
 /** 步数的进度文案，例如「还差 1500 步（约 1.1km）」 */

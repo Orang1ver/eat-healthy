@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.3",
+    date: "2026-09-15",
+    highlights: [
+      "体重可以补录了：记录日期能往前切（最多 30 天），漏记那天点一下 ‹ 就补上",
+      "补录过去的体重只改那天的记录，不会动档案体重与每日目标；只有记今天才同步",
+      "喝水改成「我的杯子」：杯容量自己设（100-1000ml，默认 250ml），也能直接按 ml 记",
+    ],
+  },
+  {
     version: "1.5.2",
     date: "2026-09-15",
     highlights: [

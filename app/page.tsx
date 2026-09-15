@@ -16,7 +16,8 @@ import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients,
 import { buildHealthContext, calcDailyTargets } from "./lib/health";
 import { loadRewards } from "./lib/storage";
 import { calcCurrentStreak } from "./lib/rewards";
-import { progressOf } from "./lib/steps";
+import { cupsRemaining, DEFAULT_CUP_ML, progressOf } from "./lib/steps";
+import { loadPrefs } from "./lib/prefs";
 import { todayISO, weekStartOf } from "./lib/date";
 import type { CommonIngredient, Dish, TakeoutDish } from "./lib/types";
 
@@ -55,9 +56,12 @@ export default function Home() {
   // 今日进度概览（有健康档案时才显示）
   const [today, setToday] = useState<{ water: number; waterTarget: number; steps: number; stepsTarget: number } | null>(null);
   const [streakText, setStreakText] = useState("");
+  /** 我的杯子容量：首页的"还差几杯"要和健康页同一个口径 */
+  const [cupMl, setCupMl] = useState(DEFAULT_CUP_ML);
 
   useEffect(() => {
     setCommonIngredients(loadCommonIngredients());
+    setCupMl(loadPrefs().cupMl);
     const profile = loadHealthProfile();
     if (profile) {
       const t = calcDailyTargets(profile);
@@ -254,7 +258,7 @@ export default function Home() {
                     cur: today.water,
                     target: today.waterTarget,
                     unit: "ml",
-                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差 ${Math.ceil(p.remaining / 250)} 杯`),
+                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差约 ${cupsRemaining(p.remaining, cupMl)} 杯`),
                   },
                   {
                     label: "🚶",
