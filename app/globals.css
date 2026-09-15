@@ -33,29 +33,32 @@
  * 深色主题：用属性选择器而不是媒体查询 —— 用户可以在设置里手动选「浅色 / 深色 / 跟随系统」，
  * 媒体查询表达不了"系统是深色但用户选了浅色"。
  * 属性由 layout.tsx 的首帧内联脚本先贴好（避免闪一下），运行期由 app/lib/theme.ts 维护。
- * 原先底 #2A2210 与卡片 #36300F 几乎同色、整页发闷；现在与浅色版保持同一套关系：
- * 卡片比页面亮、内衬块比卡片再亮。
+ *
+ * 亮度阶梯（与浅色版同一套关系，只把"底"换成暖褐而不是近黑）：
+ *   页面底 < 卡片 < 内衬块（琥珀/浅蓝）< 品牌强调色
+ * 上一版底 #17140e 太沉、卡片 #221e14 与底几乎同色，整页没有一个亮点，所以：
+ * 底提亮两档、卡片再亮一档、内衬块与强调色整体提亮到"跳出来"。
  */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: #17140e;
-  --foreground: #f2e7ce;
+  --background: #241e13;
+  --foreground: #fbf1dc;
 
-  --heal-bg: #17140e;
-  --heal-amber-50: #3a3018;
-  --heal-amber-text: #f7e3bb;
-  --heal-amber-accent: #f0b95e;
-  --heal-amber-deep: #edcf8e;
-  --heal-blue-50: #14314a;
-  --heal-blue-text: #c3e2fb;
-  --heal-blue-accent: #7fb2e8;
-  --heal-card-border: #453a1e;
-  --heal-card-bg: #221e14;
-  --heal-muted: #c6b283;
-  /* 危险色在深色下要提亮：#b91c1c 压在 #221e14 上只有约 2.4:1，远不达标 */
-  --heal-danger: #f6a3a3;
+  --heal-bg: #241e13;
+  --heal-amber-50: #4a3d1b;
+  --heal-amber-text: #ffedc4;
+  --heal-amber-accent: #ffc868;
+  --heal-amber-deep: #ffd98a;
+  --heal-blue-50: #1c4260;
+  --heal-blue-text: #cfe8ff;
+  --heal-blue-accent: #8fc6f7;
+  --heal-card-border: #5a4a22;
+  --heal-card-bg: #322a19;
+  --heal-muted: #d8c494;
+  /* 危险色在深色下要提亮：原来的 #b91c1c 压在卡片上只有约 2.4:1，远不达标 */
+  --heal-danger: #ffa9a9;
   --heal-scrim: rgba(0, 0, 0, 0.55);
-  --heal-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  --heal-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
 body {
