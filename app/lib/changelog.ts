@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.4",
+    date: "2026-09-15",
+    highlights: [
+      "首页新增健康仪表盘：喝水 / 步数 / 体重 / 连续打卡 四格一眼看清",
+      "喝水与步数改成大字号 + 进度条，还差几杯、还差几公里直接写在下面",
+      "体重那格显示最新记录与较上次的升降；整张卡点进健康小屋",
+    ],
+  },
+  {
     version: "1.5.3",
     date: "2026-09-15",
     highlights: [

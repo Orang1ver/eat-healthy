@@ -12,17 +12,46 @@ import { TakeoutCard } from "./components/TakeoutCard";
 import { recommend, takeoutRecommend } from "./lib/ai";
 import { getDisabledTags } from "./lib/mutualExclusion";
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./lib/tags";
-import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
+import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight, loadWeights } from "./lib/storage";
 import { buildHealthContext, calcDailyTargets } from "./lib/health";
 import { loadRewards } from "./lib/storage";
-import { calcCurrentStreak } from "./lib/rewards";
-import { cupsRemaining, DEFAULT_CUP_ML, progressOf } from "./lib/steps";
+import { calcCurrentStreak, calcMaxStreak } from "./lib/rewards";
+import { cupsRemaining, progressOf, stepsToKm } from "./lib/steps";
 import { loadPrefs } from "./lib/prefs";
+import { deltaColor, deltaText, deltaVsPrevious, latestWeight } from "./lib/weight";
 import { todayISO, weekStartOf } from "./lib/date";
 import type { CommonIngredient, Dish, TakeoutDish } from "./lib/types";
 
 type RecommendResult = { title: string; dishes: Dish[]; shoppingList: string[]; aiMessage: string };
 type TakeoutPick = TakeoutDish & { reason: string; pairTip?: string };
+
+/**
+ * 首页健康仪表盘的数据形状（有健康档案时才有）。
+ *
+ * 进度（pct/done/remaining）在读取时就算好放进 state：这里是 mount 时的一次性快照，
+ * 放进 state 可以让 JSX 里不必再处理"可能为 null"的中间值。
+ */
+type HomeHealth = {
+  water: number;
+  waterTarget: number;
+  waterPct: number;
+  waterDone: boolean;
+  waterRemaining: number;
+  steps: number;
+  stepsTarget: number;
+  stepsPct: number;
+  stepsDone: boolean;
+  stepsRemaining: number;
+  /** 我的杯子容量：首页的"还差几杯"要和健康小屋同一个口径 */
+  cupMl: number;
+  /** 最新一条体重记录（还没记过体重时退回档案里的值） */
+  weightKg: number | null;
+  /** 与上一次体重记录的差值（正为增重） */
+  weightDelta: number | null;
+  weightDate: string | null;
+  streak: number;
+  maxStreak: number;
+};
 
 export default function Home() {
   const [channel, setChannel] = useState<"自己做" | "外卖">("自己做");
@@ -53,30 +82,42 @@ export default function Home() {
   const [saveTarget, setSaveTarget] = useState<TakeoutPick | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
 
-  // 今日进度概览（有健康档案时才显示）
-  const [today, setToday] = useState<{ water: number; waterTarget: number; steps: number; stepsTarget: number } | null>(null);
-  const [streakText, setStreakText] = useState("");
-  /** 我的杯子容量：首页的"还差几杯"要和健康页同一个口径 */
-  const [cupMl, setCupMl] = useState(DEFAULT_CUP_ML);
+  // 首页健康仪表盘（有健康档案时才显示）
+  const [health, setHealth] = useState<HomeHealth | null>(null);
 
   useEffect(() => {
     setCommonIngredients(loadCommonIngredients());
-    setCupMl(loadPrefs().cupMl);
     const profile = loadHealthProfile();
-    if (profile) {
-      const t = calcDailyTargets(profile);
-      const c = loadCheckin(todayISO());
-      setToday({
-        water: c?.waterMl ?? 0,
-        waterTarget: t.waterTarget,
-        steps: c?.steps ?? 0,
-        stepsTarget: t.stepsTarget,
-      });
+    if (!profile) return;
+    const t = calcDailyTargets(profile);
+    const c = loadCheckin(todayISO());
+    const rewards = loadRewards();
+    const weights = loadWeights();
+    const latest = latestWeight(weights);
+    const dPrev = deltaVsPrevious(weights);
+    const water = c?.waterMl ?? 0;
+    const steps = c?.steps ?? 0;
+    const wp = progressOf(water, t.waterTarget);
+    const sp = progressOf(steps, t.stepsTarget);
+    setHealth({
+      water,
+      waterTarget: t.waterTarget,
+      waterPct: wp.pct,
+      waterDone: wp.done,
+      waterRemaining: wp.remaining,
+      steps,
+      stepsTarget: t.stepsTarget,
+      stepsPct: sp.pct,
+      stepsDone: sp.done,
+      stepsRemaining: sp.remaining,
+      cupMl: loadPrefs().cupMl,
+      weightKg: latest?.weightKg ?? profile.weightKg ?? null,
+      weightDelta: dPrev?.diff ?? null,
+      weightDate: latest?.date ?? null,
       // 连续天数：今天已达标就从今天数，否则从昨天数（避免白天打开显示 0 天）
-      const rewards = loadRewards();
-      const n = calcCurrentStreak(rewards.days, todayISO());
-      if (n > 0) setStreakText(`🔥 连续 ${n} 天`);
-    }
+      streak: calcCurrentStreak(rewards.days, todayISO()),
+      maxStreak: calcMaxStreak(rewards.days),
+    });
   }, []);
 
   // 把健康档案 + 今日打卡拼成上下文，随每次推荐发给 AI
@@ -244,54 +285,92 @@ export default function Home() {
 
         <IOSInstallHint />
 
-        {today && (
-          <Link href="/health" className="heal-card mb-4 flex items-center justify-between gap-3 p-3">
-            <div className="min-w-0 flex-1">
-              <div className="mb-1.5 flex items-center justify-between text-xs font-medium">
-                <span>今日进度</span>
-                {streakText && <span style={{ color: "var(--heal-amber-deep)" }}>{streakText}</span>}
+        {/* 健康仪表盘：喝水 / 步数 / 体重 / 连续天数 —— 首页一眼看到"今天还差什么" */}
+        {health ? (
+          <Link href="/health" className="heal-card mb-4 block p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-medium">💪 我的健康</span>
+              <span className="flex items-center gap-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                {health.streak > 0 && <span style={{ color: "var(--heal-amber-deep)" }}>🔥 连续 {health.streak} 天</span>}
+                <span className="text-lg leading-none">›</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {/* 喝水 */}
+              <div className="rounded-2xl p-2.5" style={{ background: "var(--heal-blue-50)" }}>
+                <div className="flex items-baseline justify-between text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <span>💧 喝水</span>
+                  <span>目标 {health.waterTarget}</span>
+                </div>
+                <div className="mt-1 text-xl font-medium" style={{ color: "var(--heal-blue-text)" }}>
+                  {health.water}
+                  <span className="text-[11px]"> ml</span>
+                </div>
+                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--heal-card-bg)" }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${health.waterPct}%`, background: health.waterDone ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
+                  />
+                </div>
+                <div className="mt-1 text-[10px]" style={{ color: health.waterDone ? "var(--heal-blue-text)" : "var(--heal-muted)" }}>
+                  {health.waterDone ? "喝够啦 🎉" : `还差 ${health.waterRemaining}ml（约 ${cupsRemaining(health.waterRemaining, health.cupMl)} 杯）`}
+                </div>
               </div>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  {
-                    label: "💧",
-                    cur: today.water,
-                    target: today.waterTarget,
-                    unit: "ml",
-                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差约 ${cupsRemaining(p.remaining, cupMl)} 杯`),
-                  },
-                  {
-                    label: "🚶",
-                    cur: today.steps,
-                    target: today.stepsTarget,
-                    unit: "步",
-                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差 ${p.remaining} 步`),
-                  },
-                ].map((row) => {
-                  const p = progressOf(row.cur, row.target);
-                  return (
-                    <div key={row.unit} className="flex items-center gap-2">
-                      <span className="w-4 text-xs">{row.label}</span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${p.pct}%`, background: p.done ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
-                        />
-                      </div>
-                      <span className="whitespace-nowrap text-[10px]" style={{ color: "var(--heal-muted)" }}>
-                        {row.cur}/{row.target}
-                        {row.unit === "ml" ? "" : "步"} · {row.tail(p)}
-                      </span>
-                    </div>
-                  );
-                })}
+
+              {/* 步数 */}
+              <div className="rounded-2xl p-2.5" style={{ background: "var(--heal-blue-50)" }}>
+                <div className="flex items-baseline justify-between text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <span>🚶 步数</span>
+                  <span>目标 {health.stepsTarget}</span>
+                </div>
+                <div className="mt-1 text-xl font-medium" style={{ color: "var(--heal-blue-text)" }}>
+                  {health.steps}
+                  <span className="text-[11px]"> 步</span>
+                </div>
+                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--heal-card-bg)" }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${health.stepsPct}%`, background: health.stepsDone ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
+                  />
+                </div>
+                <div className="mt-1 text-[10px]" style={{ color: health.stepsDone ? "var(--heal-blue-text)" : "var(--heal-muted)" }}>
+                  {health.stepsDone ? "走够啦 🎉" : `还差 ${health.stepsRemaining} 步（约 ${stepsToKm(health.stepsRemaining)}km）`}
+                </div>
+              </div>
+
+              {/* 体重 */}
+              <div className="rounded-2xl p-2.5" style={{ background: "var(--heal-amber-50)" }}>
+                <div className="flex items-baseline justify-between text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <span>⚖️ 体重</span>
+                  <span>{health.weightDate ? health.weightDate.slice(5) : "档案值"}</span>
+                </div>
+                <div className="mt-1 text-xl font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                  {health.weightKg != null ? health.weightKg.toFixed(1) : "—"}
+                  <span className="text-[11px]"> kg</span>
+                </div>
+                <div className="mt-1 text-[10px]" style={{ color: health.weightDelta != null ? deltaColor(health.weightDelta) : "var(--heal-muted)" }}>
+                  {health.weightDelta != null ? `较上次 ${deltaText(health.weightDelta)}` : "还没记过体重"}
+                </div>
+              </div>
+
+              {/* 连续打卡 */}
+              <div className="rounded-2xl p-2.5" style={{ background: "var(--heal-amber-50)" }}>
+                <div className="flex items-baseline justify-between text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <span>🔥 连续打卡</span>
+                  {health.maxStreak > 0 && <span>最长 {health.maxStreak} 天</span>}
+                </div>
+                <div className="mt-1 text-xl font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                  {health.streak}
+                  <span className="text-[11px]"> 天</span>
+                </div>
+                <div className="mt-1 text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                  {health.waterDone && health.stepsDone ? "今天已完成 ✅" : "两项都达标才算 1 天"}
+                </div>
               </div>
             </div>
-            <span className="shrink-0 text-lg">›</span>
           </Link>
-        )}
-
-        {!today && (
+        ) : (
           <Link href="/health" className="heal-card mb-4 flex items-center justify-between gap-2 p-3 text-xs" style={{ color: "var(--heal-muted)" }}>
             <span>还没填健康档案 —— 填一下就能看到每天该喝多少水、走多少步</span>
             <span className="shrink-0 text-lg">›</span>
