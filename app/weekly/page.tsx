@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { MealDetailDialog } from "../components/MealDetailDialog";
 import { AddMealDialog } from "../components/AddMealDialog";
+import { TopTabs } from "../components/TopTabs";
 import { updateProfile, weeklyInsight as fetchWeeklyInsight } from "../lib/ai";
 import { addDays, formatWeekRange, todayISO, weekDates, weekStartOf, WEEKDAY_LABELS } from "../lib/date";
 import {
@@ -78,14 +78,15 @@ export default function WeeklyPage() {
   return (
     <main className="min-h-screen p-4 md:p-8" style={{ background: "var(--heal-bg)" }}>
       <div className="mx-auto max-w-5xl">
-        <header className="mb-4 flex items-center justify-between">
+        <header className="mb-3">
           <h1 className="text-xl font-medium" style={{ fontFamily: "var(--font-serif, serif)" }}>
             📅 本周饮食回顾
           </h1>
-          <Link href="/" className="heal-btn heal-btn-ghost px-3 py-1.5 text-xs">
-            ← 返回首页
-          </Link>
         </header>
+
+        {/* 和首页/健康小屋同一套顶部入口（这两个都不是当前页，所以都不高亮）——
+            原来的「← 返回首页」由一个看得见的入口承担，不再是个孤立小按钮 */}
+        <TopTabs />
 
         <div className="mb-4 flex items-center justify-center gap-4">
           <button type="button" onClick={() => setWeekStart((w) => addDays(w, -7))} className="heal-btn heal-btn-ghost px-2 py-1 text-sm">
@@ -105,16 +106,16 @@ export default function WeeklyPage() {
             return (
               <div key={d} className="heal-card flex flex-col p-2">
                 <div className="mb-2 text-center">
-                  <div className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                  <div className="text-sm font-medium" style={{ color: "var(--heal-amber-deep)" }}>
                     {WEEKDAY_LABELS[i]}
                   </div>
-                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <div className="text-xs" style={{ color: "var(--heal-muted)" }}>
                     {d.slice(5)}
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col gap-1">
                   {dayMeals.length === 0 && (
-                    <div className="py-2 text-center text-[11px]" style={{ color: "var(--heal-card-border)" }}>
+                    <div className="py-2 text-center text-xs" style={{ color: "var(--heal-muted)" }}>
                       还没有记录
                     </div>
                   )}
@@ -123,7 +124,7 @@ export default function WeeklyPage() {
                       key={m.id}
                       type="button"
                       onClick={() => setSelected(m)}
-                      className="rounded-lg px-1.5 py-1 text-left text-[11px] leading-tight"
+                      className="rounded-lg px-2 py-1.5 text-left text-xs leading-tight"
                       style={
                         m.source === "manual"
                           ? { background: "var(--heal-blue-50)", color: "var(--heal-blue-text)" }
@@ -141,7 +142,7 @@ export default function WeeklyPage() {
                 <button
                   type="button"
                   onClick={() => setAddTarget(d)}
-                  className="heal-btn mt-2 py-1 text-[12px]"
+                  className="heal-btn mt-2 w-full py-1.5 text-xs"
                   style={{ borderRadius: 8, border: "1px dashed var(--heal-card-border)", color: "var(--heal-muted)", background: "transparent" }}
                 >
                   + 添加
@@ -154,7 +155,7 @@ export default function WeeklyPage() {
         <div className="heal-card p-4">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-medium">🧠 AI 营养分析师</span>
-            <button type="button" disabled={loadingInsight} onClick={generateInsight} className="heal-btn heal-btn-primary px-3 py-1.5 text-xs">
+            <button type="button" disabled={loadingInsight} onClick={generateInsight} className="heal-btn heal-btn-primary px-3 py-2 text-sm">
               {loadingInsight ? "分析中…" : "生成本周分析"}
             </button>
           </div>
