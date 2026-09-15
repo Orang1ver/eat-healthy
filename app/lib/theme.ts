@@ -20,10 +20,14 @@ export const THEME_OPTIONS: { key: ThemeChoice; label: string; hint: string }[] 
   { key: "dark", label: "深色", hint: "深色主题" },
 ];
 
-/** 主题色（浏览器地址栏 / PWA 顶栏）：与 globals.css 的 --heal-bg 对齐 */
+/**
+ * 主题色（浏览器地址栏 / PWA 顶栏）。
+ * ⚠️ 必须与 globals.css 里的 `--heal-bg` 保持一致 —— 深色底色改过一次（#17140e → #241e13），
+ * 忘了同步这里就会出现"顶栏比页面更黑"的错位。
+ */
 export const THEME_COLOR: Record<"light" | "dark", string> = {
   light: "#FAC775",
-  dark: "#17140e",
+  dark: "#241e13",
 };
 
 export function isThemeChoice(v: unknown): v is ThemeChoice {

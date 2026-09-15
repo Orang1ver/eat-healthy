@@ -18,6 +18,11 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.6.1",
+    date: "2026-09-15",
+    highlights: ["深色不再黑成一片：整体提亮两档，卡片、面板和强调色都跳出来"],
+  },
+  {
     version: "1.6.0",
     date: "2026-09-15",
     highlights: [
