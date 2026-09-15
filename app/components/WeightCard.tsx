@@ -126,7 +126,7 @@ export function WeightCard({
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium">⚖️ 体重记录</span>
         {latest && (
-          <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+          <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
             最近 {latest.date.slice(5)}
           </span>
         )}
@@ -137,7 +137,7 @@ export function WeightCard({
         className="mb-3 flex items-center justify-between gap-2 rounded-xl p-2"
         style={{ background: viewingToday ? "var(--heal-blue-50)" : "var(--heal-amber-50)" }}
       >
-        <span className="text-[11px] leading-5" style={{ color: viewingToday ? "var(--heal-muted)" : "var(--heal-amber-text)" }}>
+        <span className="text-[12px] leading-5" style={{ color: viewingToday ? "var(--heal-muted)" : "var(--heal-amber-text)" }}>
           {viewingToday ? "记录日期：今天" : `正在补录 ${date} 的体重`}
         </span>
         <div className="flex shrink-0 items-center gap-1">
@@ -146,7 +146,7 @@ export function WeightCard({
             aria-label="前一天"
             disabled={!canGoPrev}
             onClick={() => goToDate(addDays(date, -1))}
-            className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs"
+            className="heal-btn heal-btn-ghost px-2 py-1.5 text-xs"
           >
             ‹
           </button>
@@ -158,12 +158,12 @@ export function WeightCard({
             aria-label="后一天"
             disabled={!canGoNext}
             onClick={() => goToDate(addDays(date, 1))}
-            className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs"
+            className="heal-btn heal-btn-ghost px-2 py-1.5 text-xs"
           >
             ›
           </button>
           {!viewingToday && (
-            <button type="button" onClick={() => goToDate(today)} className="heal-btn heal-btn-ghost px-2 py-1 text-[11px]">
+            <button type="button" onClick={() => goToDate(today)} className="heal-btn heal-btn-ghost px-2 py-1 text-[12px]">
               回到今天
             </button>
           )}
@@ -172,7 +172,7 @@ export function WeightCard({
 
       {/* 昨天漏记时给一句能照做的提示（从今天点一下 ‹ 就到昨天） */}
       {viewingToday && !todayEntry && !weights[yesterday] && (
-        <p className="mb-3 text-[11px] leading-5" style={{ color: "var(--heal-amber-deep)" }}>
+        <p className="mb-3 text-[12px] leading-5" style={{ color: "var(--heal-amber-deep)" }}>
           昨天（{yesterday.slice(5)}）还没记，点上面的 ‹ 就能补录
         </p>
       )}
@@ -183,7 +183,7 @@ export function WeightCard({
           <div className="text-lg font-medium" style={{ color: "var(--heal-amber-deep)" }}>
             {draft.toFixed(1)}
           </div>
-          <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+          <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
             {viewingToday ? "待记录 kg" : dayEntry ? "该日已记 kg" : "待补录 kg"}
           </div>
         </div>
@@ -191,7 +191,7 @@ export function WeightCard({
           <div className="text-lg font-medium" style={{ color: dPrev ? deltaColor(dPrev.diff) : "var(--heal-muted)" }}>
             {dPrev ? deltaText(dPrev.diff) : "—"}
           </div>
-          <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+          <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
             较上次
           </div>
         </div>
@@ -199,14 +199,14 @@ export function WeightCard({
           <div className="text-lg font-medium" style={{ color: d7 ? deltaColor(d7.diff) : "var(--heal-muted)" }}>
             {d7 ? deltaText(d7.diff) : "—"}
           </div>
-          <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+          <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
             近 7 天
           </div>
         </div>
       </div>
 
       {!viewingToday && (
-        <p className="mb-3 text-[10px] leading-4" style={{ color: "var(--heal-muted)" }}>
+        <p className="mb-3 text-[11px] leading-4" style={{ color: "var(--heal-muted)" }}>
           「较上次 / 近 7 天」按最新一条记录算；这里改的是 {date.slice(5)} 那天
         </p>
       )}
@@ -245,8 +245,8 @@ export function WeightCard({
         </button>
       </div>
 
-      {msg && <p className="mb-2 text-[11px] leading-5" style={{ color: "var(--heal-blue-text)" }}>{msg}</p>}
-      {err && <p className="mb-2 text-[11px] leading-5 text-rose-600">{err}</p>}
+      {msg && <p className="mb-2 text-[12px] leading-5" style={{ color: "var(--heal-blue-text)" }}>{msg}</p>}
+      {err && <p className="mb-2 text-[12px] leading-5 text-rose-600">{err}</p>}
 
       {/* 趋势曲线 */}
       <div className="mt-3">
@@ -257,11 +257,11 @@ export function WeightCard({
       {entries.length > 0 && (
         <div className="mt-3">
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+            <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
               共 {entries.length} 条记录
             </span>
             {entries.length > 5 && (
-              <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[11px]">
+              <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-1.5 text-[12px]">
                 {showAll ? "收起" : `展开全部`}
               </button>
             )}

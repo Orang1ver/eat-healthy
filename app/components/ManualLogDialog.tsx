@@ -100,7 +100,7 @@ export function ManualLogDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
       <div className="heal-card w-full max-w-sm p-5" style={{ background: "var(--heal-card-bg)" }}>
         <h2 className="mb-1 text-base font-medium">📝 记下这顿</h2>
         <p className="mb-3 text-xs leading-5" style={{ color: "var(--heal-muted)" }}>
@@ -127,7 +127,7 @@ export function ManualLogDialog({
           </button>
         </div>
         {hint && (
-          <p className="mb-2 text-[11px]" style={{ color: "var(--heal-blue-text)" }}>
+          <p className="mb-2 text-[12px]" style={{ color: "var(--heal-blue-text)" }}>
             {hint}
           </p>
         )}

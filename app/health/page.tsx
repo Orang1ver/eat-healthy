@@ -272,7 +272,7 @@ export default function HealthPage() {
                 aria-label="前一天"
                 disabled={!canGoPrev}
                 onClick={() => setSelectedDate((d) => addDays(d, -1))}
-                className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs"
+                className="heal-btn heal-btn-ghost px-2 py-1.5 text-xs"
               >
                 ‹
               </button>
@@ -284,7 +284,7 @@ export default function HealthPage() {
                 aria-label="后一天"
                 disabled={!canGoNext}
                 onClick={() => setSelectedDate((d) => addDays(d, 1))}
-                className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs"
+                className="heal-btn heal-btn-ghost px-2 py-1.5 text-xs"
               >
                 ›
               </button>
@@ -293,17 +293,17 @@ export default function HealthPage() {
 
           {!viewingToday && (
             <div className="mb-3 flex items-center justify-between gap-2 rounded-xl p-2" style={{ background: "var(--heal-amber-50)" }}>
-              <span className="text-[11px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
+              <span className="text-[12px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
                 正在补录 {selectedDate} 的数据，改完直接保存即可
               </span>
-              <button type="button" onClick={() => setSelectedDate(today)} className="heal-btn heal-btn-ghost shrink-0 px-2 py-1 text-[11px]">
+              <button type="button" onClick={() => setSelectedDate(today)} className="heal-btn heal-btn-ghost shrink-0 px-2 py-1 text-[12px]">
                 回到今天
               </button>
             </div>
           )}
 
           {backfillMsg && (
-            <p className="mb-3 text-[11px] font-medium" style={{ color: "var(--heal-blue-text)" }}>
+            <p className="mb-3 text-[12px] font-medium" style={{ color: "var(--heal-blue-text)" }}>
               {backfillMsg}
             </p>
           )}
@@ -321,7 +321,7 @@ export default function HealthPage() {
                 style={{ width: `${waterPct}%`, background: waterPct >= 100 ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
               />
             </div>
-            <p className="mt-1 text-[11px] font-medium" style={{ color: waterProgress.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
+            <p className="mt-1 text-[12px] font-medium" style={{ color: waterProgress.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
               {waterProgressText(waterProgress, cupMl)}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -361,7 +361,7 @@ export default function HealthPage() {
             {/* 我的杯子：一杯多少自己定，记忆在本机（改杯子不影响已记录的水量） */}
             <div className="mt-3 rounded-xl p-2" style={{ background: "var(--heal-blue-50)" }}>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
                   我的杯子
                 </span>
                 {CUP_PRESETS.map((n) => (
@@ -369,7 +369,7 @@ export default function HealthPage() {
                     key={n}
                     type="button"
                     onClick={() => changeCup(n)}
-                    className={`heal-btn px-2 py-0.5 text-[11px] ${cupMl === n ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                    className={`heal-btn px-2 py-1.5 text-[12px] ${cupMl === n ? "heal-btn-feature" : "heal-btn-ghost"}`}
                   >
                     {n}ml
                   </button>
@@ -385,14 +385,14 @@ export default function HealthPage() {
                   onChange={(e) => setCupDraft(e.target.value)}
                   onBlur={commitCupDraft}
                   onKeyDown={(e) => e.key === "Enter" && commitCupDraft()}
-                  className="w-20 rounded-full border px-2 py-0.5 text-center text-[11px]"
+                  className="w-20 rounded-full border px-2 py-1.5 text-center text-[12px]"
                   style={{ borderColor: "var(--heal-card-border)" }}
                 />
-                <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
                   ml（100-1000）
                 </span>
               </div>
-              <p className="mt-1 text-[10px] leading-4" style={{ color: "var(--heal-muted)" }}>
+              <p className="mt-1 text-[11px] leading-4" style={{ color: "var(--heal-muted)" }}>
                 换杯子只影响换算和上面的快捷按钮；已记录的水量不变（记的是 ml）
               </p>
             </div>
@@ -411,7 +411,7 @@ export default function HealthPage() {
                 style={{ width: `${stepsPct}%`, background: stepsPct >= 100 ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
               />
             </div>
-            <p className="mt-1 text-[11px] font-medium" style={{ color: stepsProgress.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
+            <p className="mt-1 text-[12px] font-medium" style={{ color: stepsProgress.done ? "var(--heal-blue-text)" : "var(--heal-amber-deep)" }}>
               {stepsProgressText(stepsProgress)}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -508,7 +508,7 @@ export default function HealthPage() {
                   <div className="text-2xl font-medium" style={{ color: "var(--heal-amber-deep)" }}>
                     🔥 {currentStreak}
                   </div>
-                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <div className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
                     当前连续
                   </div>
                 </div>
@@ -516,13 +516,13 @@ export default function HealthPage() {
                   <div className="text-2xl font-medium" style={{ color: "var(--heal-blue-text)" }}>
                     ⭐ {maxStreak}
                   </div>
-                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <div className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
                     历史最长
                   </div>
                 </div>
               </div>
 
-              <p className="mb-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+              <p className="mb-2 text-[12px]" style={{ color: "var(--heal-muted)" }}>
                 {todayCompletion.allDone
                   ? "今天已完成 ✅ 明天继续，别断签哦"
                   : `今天还差：${!todayCompletion.waterDone ? "喝水 " : ""}${!todayCompletion.stepsDone ? "步数" : ""}（两项都达标才算 1 天）`}
@@ -542,10 +542,10 @@ export default function HealthPage() {
                       }}
                     >
                       <div className="text-xl">{b.emoji}</div>
-                      <div className="text-[10px] font-medium" style={{ color: owned ? "var(--heal-amber-deep)" : "var(--heal-muted)" }}>
+                      <div className="text-[11px] font-medium" style={{ color: owned ? "var(--heal-amber-deep)" : "var(--heal-muted)" }}>
                         {b.label}
                       </div>
-                      <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                      <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
                         {owned ? "已达成" : nextB && nextB.id === b.id ? `还差 ${Math.max(0, b.days - maxStreak)} 天` : `${b.days} 天`}
                       </div>
                     </div>
@@ -561,10 +561,10 @@ export default function HealthPage() {
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-medium">📊 本周打卡</span>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setWeekStart((w) => addDays(w, -7))} className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs">
+              <button type="button" onClick={() => setWeekStart((w) => addDays(w, -7))} className="heal-btn heal-btn-ghost px-2 py-1.5 text-xs">
                 ‹
               </button>
-              <button type="button" onClick={() => setWeekStart((w) => addDays(w, 7))} className="heal-btn heal-btn-ghost px-2 py-0.5 text-xs">
+              <button type="button" onClick={() => setWeekStart((w) => addDays(w, 7))} className="heal-btn heal-btn-ghost px-2 py-1.5 text-xs">
                 ›
               </button>
             </div>
@@ -593,7 +593,7 @@ export default function HealthPage() {
                     cursor: pickable ? "pointer" : "default",
                   }}
                 >
-                  <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
                     {WEEKDAY_LABELS[i]}
                   </div>
                   <div className="mt-1 text-sm leading-none">
@@ -603,7 +603,7 @@ export default function HealthPage() {
                       <>
                         {okWater ? "💧" : ""}
                         {okSteps ? "🚶" : ""}
-                        {!okWater && !okSteps ? <span className="text-[10px]" style={{ color: "var(--heal-card-border)" }}>·</span> : ""}
+                        {!okWater && !okSteps ? <span className="text-[11px]" style={{ color: "var(--heal-card-border)" }}>·</span> : ""}
                       </>
                     )}
                   </div>
@@ -611,7 +611,7 @@ export default function HealthPage() {
               );
             })}
           </div>
-          <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+          <p className="mt-2 text-[12px]" style={{ color: "var(--heal-muted)" }}>
             💧 喝够水 · 🚶 走够步 · ✅ 两样都达标（计入连续天数）；点日期可补录漏记的那天
           </p>
         </div>
@@ -628,14 +628,14 @@ export default function HealthPage() {
                 { label: "BMI", value: `${targets.bmi}`, unit: "", hint: targets.bmiLabel },
               ].map((item) => (
                 <div key={item.label} className="rounded-2xl p-3 text-center" style={{ background: "var(--heal-amber-50)" }}>
-                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  <div className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
                     {item.label}
                   </div>
                   <div className="text-lg font-medium" style={{ color: "var(--heal-amber-deep)" }}>
                     {item.value}
-                    <span className="text-[10px]"> {item.unit}</span>
+                    <span className="text-[11px]"> {item.unit}</span>
                   </div>
-                  <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                  <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
                     {item.hint}
                   </div>
                 </div>
@@ -747,7 +747,7 @@ export default function HealthPage() {
             {ACTIVITY_LEVELS.map((a) => (
               <button key={a.label} type="button" onClick={() => setActivityLevel(a.label)} className={`heal-btn px-2 py-1.5 text-left text-xs ${activityLevel === a.label ? "heal-btn-feature" : "heal-btn-ghost"}`}>
                 {a.label}
-                <span className="mt-0.5 block text-[10px] font-normal" style={{ color: "var(--heal-muted)" }}>
+                <span className="mt-0.5 block text-[11px] font-normal" style={{ color: "var(--heal-muted)" }}>
                   {a.desc}
                 </span>
               </button>
@@ -759,7 +759,7 @@ export default function HealthPage() {
             {HEALTH_GOALS.map((g) => (
               <button key={g.key} type="button" onClick={() => setGoal(g.key)} className={`heal-btn px-2 py-1.5 text-xs ${goal === g.key ? "heal-btn-primary" : "heal-btn-ghost"}`}>
                 {g.key}
-                <span className="mt-0.5 block text-[10px] font-normal" style={{ color: "var(--heal-muted)" }}>
+                <span className="mt-0.5 block text-[11px] font-normal" style={{ color: "var(--heal-muted)" }}>
                   {g.desc}
                 </span>
               </button>
@@ -777,7 +777,7 @@ export default function HealthPage() {
           <button type="button" onClick={handleSaveProfile} className="heal-btn heal-btn-primary w-full px-4 py-2.5 text-sm">
             {profile ? "更新档案（目标会随之刷新）" : "保存档案，生成我的每日目标"}
           </button>
-          <p className="mt-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+          <p className="mt-2 text-[12px]" style={{ color: "var(--heal-muted)" }}>
             档案保存在你自己设备的浏览器里，推荐饭菜和外卖时会自动参考。
           </p>
         </div>

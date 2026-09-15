@@ -47,7 +47,7 @@ export function RecommendCard({
             <div>
               <span className="font-medium">{dish.name}</span>
               <span
-                className="heal-pill ml-2 px-2 py-0.5 text-[10px]"
+                className="heal-pill ml-2 px-2 py-1.5 text-[11px]"
                 style={{ background: "var(--heal-amber-50)", color: "var(--heal-amber-text)" }}
               >
                 {dish.role}

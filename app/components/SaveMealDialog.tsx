@@ -25,7 +25,7 @@ export function SaveMealDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
       <div className="heal-card w-full max-w-sm p-5">
         <h2 className="mb-1 text-base font-medium">记到什么时候？</h2>
         <p className="mb-3 text-xs" style={{ color: "var(--heal-muted)" }}>

@@ -122,7 +122,7 @@ export function ExerciseCard({
     <div className="heal-card mb-4 p-4">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium">🏃 运动记录</span>
-        <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+        <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
           本周 {week.count} 次 · {week.km} km
         </span>
       </div>
@@ -133,7 +133,7 @@ export function ExerciseCard({
           <div className="text-lg font-medium" style={{ color: "var(--heal-blue-text)" }}>
             {week.count}
           </div>
-          <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+          <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
             本周次数
           </div>
         </div>
@@ -141,7 +141,7 @@ export function ExerciseCard({
           <div className="text-lg font-medium" style={{ color: "var(--heal-blue-text)" }}>
             {week.minutes}
           </div>
-          <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+          <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
             本周分钟
           </div>
         </div>
@@ -149,7 +149,7 @@ export function ExerciseCard({
           <div className="text-lg font-medium" style={{ color: "var(--heal-blue-text)" }}>
             {week.km}
           </div>
-          <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+          <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
             本周公里
           </div>
         </div>
@@ -189,7 +189,7 @@ export function ExerciseCard({
           className="w-20 rounded-full border px-2 py-1.5 text-center text-sm"
           style={{ borderColor: "var(--heal-card-border)" }}
         />
-          <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+          <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
           分钟
         </span>
         <input
@@ -206,11 +206,11 @@ export function ExerciseCard({
           className="w-20 rounded-full border px-2 py-1.5 text-center text-sm"
           style={{ borderColor: "var(--heal-card-border)" }}
         />
-        <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+        <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
           公里
         </span>
       </div>
-      <p className="mb-2 text-[10px]" style={{ color: "var(--heal-muted)" }}>
+      <p className="mb-2 text-[11px]" style={{ color: "var(--heal-muted)" }}>
         {activeType.emoji} {activeType.key}：{activeType.hint}（时长与距离至少填一个）
       </p>
 
@@ -228,15 +228,15 @@ export function ExerciseCard({
       </div>
 
       {msg && (
-        <p className="mb-2 text-[11px] leading-5" style={{ color: "var(--heal-blue-text)" }}>
+        <p className="mb-2 text-[12px] leading-5" style={{ color: "var(--heal-blue-text)" }}>
           {msg}
         </p>
       )}
-      {err && <p className="mb-2 text-[11px] leading-5 text-rose-600">{err}</p>}
+      {err && <p className="mb-2 text-[12px] leading-5 text-rose-600">{err}</p>}
 
       {/* 里程碑 */}
       <div className="mt-3">
-        <div className="mb-1 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+        <div className="mb-1 text-[12px]" style={{ color: "var(--heal-muted)" }}>
           运动里程碑
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -253,12 +253,12 @@ export function ExerciseCard({
               >
                 <div className="text-xl">{m.emoji}</div>
                 <div
-                  className="text-[10px] font-medium"
+                  className="text-[11px] font-medium"
                   style={{ color: owned ? "var(--heal-amber-deep)" : "var(--heal-muted)" }}
                 >
                   {m.label}
                 </div>
-                <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                <div className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
                   {owned ? "已达成" : next && next.id === m.id ? m.progress(stats) : "未达成"}
                 </div>
               </div>
@@ -271,11 +271,11 @@ export function ExerciseCard({
       {ordered.length > 0 && (
         <div className="mt-3">
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+            <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
               累计 {stats.count} 次 · {stats.km} km · {stats.activeDays} 天
             </span>
             {ordered.length > 5 && (
-              <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[11px]">
+              <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-1.5 text-[12px]">
                 {showAll ? "收起" : "展开全部"}
               </button>
             )}
@@ -287,7 +287,7 @@ export function ExerciseCard({
                 className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-xs"
                 style={{ background: "var(--heal-blue-50)" }}
               >
-                <span className="shrink-0 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                <span className="shrink-0 text-[12px]" style={{ color: "var(--heal-muted)" }}>
                   {e.date.slice(5)}
                 </span>
                 <span className="min-w-0 flex-1 truncate">

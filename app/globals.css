@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #FFF8E7;
   --foreground: #412402;
 
@@ -14,7 +15,13 @@
   --heal-blue-accent: #85B7EB;
   --heal-card-border: #F3DFAE;
   --heal-card-bg: #FFFFFF;
-  --heal-muted: #9c8557;
+  /* 次要文字：#9c8557 对奶油底只有约 3.1:1，低于 WCAG AA 的 4.5:1；
+     加深到 #7b6335 后约 5:1，小字才真的看得清 */
+  --heal-muted: #7b6335;
+  /* 语义色（组件里不再写死颜色，深浅两套各一份） */
+  --heal-danger: #b91c1c;
+  --heal-scrim: rgba(0, 0, 0, 0.3);
+  --heal-shadow: 0 2px 8px rgba(133, 79, 11, 0.18);
 }
 
 @theme inline {
@@ -22,23 +29,33 @@
   --color-foreground: var(--foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #2A2210;
-    --foreground: #FAEEDA;
+/**
+ * 深色主题：用属性选择器而不是媒体查询 —— 用户可以在设置里手动选「浅色 / 深色 / 跟随系统」，
+ * 媒体查询表达不了"系统是深色但用户选了浅色"。
+ * 属性由 layout.tsx 的首帧内联脚本先贴好（避免闪一下），运行期由 app/lib/theme.ts 维护。
+ * 原先底 #2A2210 与卡片 #36300F 几乎同色、整页发闷；现在与浅色版保持同一套关系：
+ * 卡片比页面亮、内衬块比卡片再亮。
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #17140e;
+  --foreground: #f2e7ce;
 
-    --heal-bg: #2A2210;
-    --heal-amber-50: #4A3A14;
-    --heal-amber-text: #FBE9C8;
-    --heal-amber-accent: #FAC775;
-    --heal-amber-deep: #D9C68A;
-    --heal-blue-50: #163A52;
-    --heal-blue-text: #BFE0FA;
-    --heal-blue-accent: #85B7EB;
-    --heal-card-border: #5C4A12;
-    --heal-card-bg: #36300F;
-    --heal-muted: #D9C68A;
-  }
+  --heal-bg: #17140e;
+  --heal-amber-50: #3a3018;
+  --heal-amber-text: #f7e3bb;
+  --heal-amber-accent: #f0b95e;
+  --heal-amber-deep: #edcf8e;
+  --heal-blue-50: #14314a;
+  --heal-blue-text: #c3e2fb;
+  --heal-blue-accent: #7fb2e8;
+  --heal-card-border: #453a1e;
+  --heal-card-bg: #221e14;
+  --heal-muted: #c6b283;
+  /* 危险色在深色下要提亮：#b91c1c 压在 #221e14 上只有约 2.4:1，远不达标 */
+  --heal-danger: #f6a3a3;
+  --heal-scrim: rgba(0, 0, 0, 0.55);
+  --heal-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 body {
@@ -112,8 +129,25 @@ main.min-h-screen {
   background: var(--heal-amber-accent);
   color: var(--heal-amber-text);
   border: 0.5px solid transparent;
-  box-shadow: 0 2px 8px rgba(133, 79, 11, 0.18);
+  box-shadow: var(--heal-shadow);
 }
 .heal-btn-feature:hover:not(:disabled) {
   filter: brightness(1.05);
+}
+
+/* 弹窗遮罩：深色下需要更浓一点才压得住背景（token 见 --heal-scrim） */
+.heal-scrim {
+  background: var(--heal-scrim);
+}
+
+/**
+ * iOS Safari 在输入框字号 < 16px 时，聚焦会强制放大整页 —— 一次误缩放比"字小一点"难受得多。
+ * 只针对 WebKit（Android/桌面没有这个行为），所以不动其他平台的排版。
+ */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
