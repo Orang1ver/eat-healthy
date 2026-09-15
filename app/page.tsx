@@ -15,6 +15,7 @@ import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPres
 import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
 import { buildHealthContext, calcDailyTargets } from "./lib/health";
 import { HealthDashboard } from "./components/HealthDashboard";
+import { TopTabs } from "./components/TopTabs";
 import { todayISO, weekStartOf } from "./lib/date";
 import type { CommonIngredient, Dish, TakeoutDish } from "./lib/types";
 
@@ -204,6 +205,10 @@ export default function Home() {
             🥗 今天吃什么呀
           </h1>
           <div className="flex items-center gap-2">
+            {/* 本周回顾降级成一行小链接：它是饮食周报，不必和两个主入口抢位置 */}
+            <Link href="/weekly" className="text-[11px] underline" style={{ color: "var(--heal-muted)" }}>
+              📅 回顾
+            </Link>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -212,14 +217,11 @@ export default function Home() {
             >
               ⚙️
             </button>
-            <Link href="/health" className="heal-btn heal-btn-feature flex items-center gap-1.5 px-4 py-2.5 text-sm">
-              💪 健康小屋
-            </Link>
-            <Link href="/weekly" className="heal-btn heal-btn-primary flex items-center gap-1.5 px-4 py-2.5 text-sm">
-              📅 本周回顾
-            </Link>
           </div>
         </header>
+
+        {/* 两个平级入口：今天吃什么 ｜ 健康小屋 —— 健康不再是标题旁边的小按钮之一 */}
+        <TopTabs active="eat" />
 
         <IOSInstallHint />
 
