@@ -51,6 +51,8 @@ export function WeightCard({
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [showAll, setShowAll] = useState(false);
+  /** 趋势曲线与历史列表是否展开：默认收起，"回头看"的东西不该先占一屏 */
+  const [showMore, setShowMore] = useState(false);
 
   const viewingToday = date === today;
   const canGoPrev = date > earliestDate;
@@ -248,65 +250,78 @@ export function WeightCard({
       {msg && <p className="mb-2 text-[11px] leading-5" style={{ color: "var(--heal-blue-text)" }}>{msg}</p>}
       {err && <p className="mb-2 text-[11px] leading-5 text-rose-600">{err}</p>}
 
-      {/* 趋势曲线 */}
-      <div className="mt-3">
-        <WeightChart entries={entries} />
-      </div>
+      {/* 趋势与历史默认收起：上半部才是每天要动的，图表与列表留着回头看 */}
+      <button
+        type="button"
+        onClick={() => setShowMore((v) => !v)}
+        className="heal-btn heal-btn-ghost mt-3 w-full px-3 py-1.5 text-[11px]"
+      >
+        📈 趋势与历史（{entries.length} 条）{showMore ? " ▴" : " ▾"}
+      </button>
 
-      {/* 历史记录 */}
-      {entries.length > 0 && (
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
-              共 {entries.length} 条记录
-            </span>
-            {entries.length > 5 && (
-              <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[11px]">
-                {showAll ? "收起" : `展开全部`}
-              </button>
-            )}
+      {showMore && (
+        <>
+          {/* 趋势曲线 */}
+          <div className="mt-3">
+            <WeightChart entries={entries} />
           </div>
-          <ul className="flex flex-col gap-1">
-            {(showAll ? [...entries].reverse() : [...entries].reverse().slice(0, 5)).map((e, i, arr) => {
-              // 与"上一条更早的记录"对比（列表是倒序，所以 arr[i+1] 更早）
-              const earlier = arr[i + 1];
-              const diff = earlier ? round1(e.weightKg - earlier.weightKg) : null;
-              const active = e.date === date;
-              return (
-                <li
-                  key={e.date}
-                  className="flex items-center gap-1 rounded-xl"
-                  style={{
-                    background: "var(--heal-blue-50)",
-                    outline: active ? "1.5px solid var(--heal-amber-accent)" : "none",
-                  }}
-                >
-                  {/* 两个并列按钮（按钮不能嵌套）：左侧整行点一下 = 切到那天改，右侧 × 删除 */}
-                  <button
-                    type="button"
-                    onClick={() => goToDate(e.date)}
-                    title={e.date === today ? "今天" : `改 ${e.date} 的记录`}
-                    className="flex min-w-0 flex-1 items-center justify-between px-2 py-1.5 text-xs"
-                  >
-                    <span style={{ color: "var(--heal-muted)" }}>{e.date.slice(5)}</span>
-                    <span className="font-medium">{e.weightKg.toFixed(1)} kg</span>
-                    <span style={{ color: diff !== null ? deltaColor(diff) : "var(--heal-muted)" }}>
-                      {diff !== null ? deltaText(diff) : "首次"}
-                    </span>
+
+          {/* 历史记录 */}
+          {entries.length > 0 && (
+            <div className="mt-3">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  共 {entries.length} 条记录
+                </span>
+                {entries.length > 5 && (
+                  <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[11px]">
+                    {showAll ? "收起" : `展开全部`}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(e.date)}
-                    aria-label={`删除${e.date}`}
-                    className="shrink-0 px-2 py-1.5 text-xs opacity-50"
-                  >
-                    ×
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                )}
+              </div>
+              <ul className="flex flex-col gap-1">
+                {(showAll ? [...entries].reverse() : [...entries].reverse().slice(0, 5)).map((e, i, arr) => {
+                  // 与"上一条更早的记录"对比（列表是倒序，所以 arr[i+1] 更早）
+                  const earlier = arr[i + 1];
+                  const diff = earlier ? round1(e.weightKg - earlier.weightKg) : null;
+                  const active = e.date === date;
+                  return (
+                    <li
+                      key={e.date}
+                      className="flex items-center gap-1 rounded-xl"
+                      style={{
+                        background: "var(--heal-blue-50)",
+                        outline: active ? "1.5px solid var(--heal-amber-accent)" : "none",
+                      }}
+                    >
+                      {/* 两个并列按钮（按钮不能嵌套）：左侧整行点一下 = 切到那天改，右侧 × 删除 */}
+                      <button
+                        type="button"
+                        onClick={() => goToDate(e.date)}
+                        title={e.date === today ? "今天" : `改 ${e.date} 的记录`}
+                        className="flex min-w-0 flex-1 items-center justify-between px-2 py-1.5 text-xs"
+                      >
+                        <span style={{ color: "var(--heal-muted)" }}>{e.date.slice(5)}</span>
+                        <span className="font-medium">{e.weightKg.toFixed(1)} kg</span>
+                        <span style={{ color: diff !== null ? deltaColor(diff) : "var(--heal-muted)" }}>
+                          {diff !== null ? deltaText(diff) : "首次"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(e.date)}
+                        aria-label={`删除${e.date}`}
+                        className="shrink-0 px-2 py-1.5 text-xs opacity-50"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

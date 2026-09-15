@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.4",
+    date: "2026-09-15",
+    highlights: [
+      "健康小屋收短一大截：连续打卡与本周打卡合成一张「坚持」卡",
+      "每日目标压成顶部一行；体重趋势、运动记录、健康档案默认收起，点一下展开",
+      "只是排版整理：配色、数据与记录都没动",
+    ],
+  },
+  {
     version: "1.5.3",
     date: "2026-09-15",
     highlights: [
