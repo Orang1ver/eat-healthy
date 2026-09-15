@@ -42,8 +42,6 @@ export function ExerciseCard({
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [showAll, setShowAll] = useState(false);
-  /** 里程碑与历史列表是否展开：默认收起，上面"记一笔"才是每天要动的 */
-  const [showMore, setShowMore] = useState(false);
   const [awards, setAwards] = useState<ExerciseAwards>({});
 
   useEffect(() => {
@@ -236,93 +234,80 @@ export function ExerciseCard({
       )}
       {err && <p className="mb-2 text-[11px] leading-5 text-rose-600">{err}</p>}
 
-      {/* 里程碑与记录默认收起：上面"记一笔"才是动作，这里是回看 */}
-      <button
-        type="button"
-        onClick={() => setShowMore((v) => !v)}
-        className="heal-btn heal-btn-ghost mt-3 w-full px-3 py-1.5 text-[11px]"
-      >
-        🏅 里程碑与记录（累计 {stats.count} 次 · {stats.km} km）{showMore ? " ▴" : " ▾"}
-      </button>
-
-      {showMore && (
-        <>
-          {/* 里程碑 */}
-          <div className="mt-3">
-            <div className="mb-1 text-[11px]" style={{ color: "var(--heal-muted)" }}>
-              运动里程碑
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {EXERCISE_MILESTONES.map((m) => {
-                const owned = !!awards[m.id];
-                return (
-                  <div
-                    key={m.id}
-                    className="rounded-xl p-2 text-center"
-                    style={{
-                      background: owned ? "var(--heal-amber-50)" : "var(--heal-blue-50)",
-                      opacity: owned ? 1 : 0.55,
-                    }}
-                  >
-                    <div className="text-xl">{m.emoji}</div>
-                    <div
-                      className="text-[10px] font-medium"
-                      style={{ color: owned ? "var(--heal-amber-deep)" : "var(--heal-muted)" }}
-                    >
-                      {m.label}
-                    </div>
-                    <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
-                      {owned ? "已达成" : next && next.id === m.id ? m.progress(stats) : "未达成"}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 最近记录 */}
-          {ordered.length > 0 && (
-            <div className="mt-3">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
-                  累计 {stats.count} 次 · {stats.km} km · {stats.activeDays} 天
-                </span>
-                {ordered.length > 5 && (
-                  <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[11px]">
-                    {showAll ? "收起" : "展开全部"}
-                  </button>
-                )}
+      {/* 里程碑 */}
+      <div className="mt-3">
+        <div className="mb-1 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+          运动里程碑
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {EXERCISE_MILESTONES.map((m) => {
+            const owned = !!awards[m.id];
+            return (
+              <div
+                key={m.id}
+                className="rounded-xl p-2 text-center"
+                style={{
+                  background: owned ? "var(--heal-amber-50)" : "var(--heal-blue-50)",
+                  opacity: owned ? 1 : 0.55,
+                }}
+              >
+                <div className="text-xl">{m.emoji}</div>
+                <div
+                  className="text-[10px] font-medium"
+                  style={{ color: owned ? "var(--heal-amber-deep)" : "var(--heal-muted)" }}
+                >
+                  {m.label}
+                </div>
+                <div className="text-[10px]" style={{ color: "var(--heal-muted)" }}>
+                  {owned ? "已达成" : next && next.id === m.id ? m.progress(stats) : "未达成"}
+                </div>
               </div>
-              <ul className="flex flex-col gap-1">
-                {(showAll ? ordered : ordered.slice(0, 5)).map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-xs"
-                    style={{ background: "var(--heal-blue-50)" }}
-                  >
-                    <span className="shrink-0 text-[11px]" style={{ color: "var(--heal-muted)" }}>
-                      {e.date.slice(5)}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      <span className="font-medium">{e.type}</span>
-                      {e.minutes !== undefined && ` · ${e.minutes} 分钟`}
-                      {e.distanceKm !== undefined && ` · ${e.distanceKm}km`}
-                      {e.note && <span style={{ color: "var(--heal-muted)" }}>{` · ${e.note}`}</span>}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(e.id, `${e.date.slice(5)} ${e.type}`)}
-                      aria-label={`删除 ${e.date} 的${e.type}记录`}
-                      className="shrink-0 opacity-50"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 最近记录 */}
+      {ordered.length > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[11px]" style={{ color: "var(--heal-muted)" }}>
+              累计 {stats.count} 次 · {stats.km} km · {stats.activeDays} 天
+            </span>
+            {ordered.length > 5 && (
+              <button type="button" onClick={() => setShowAll((v) => !v)} className="heal-btn heal-btn-ghost px-2 py-0.5 text-[11px]">
+                {showAll ? "收起" : "展开全部"}
+              </button>
+            )}
+          </div>
+          <ul className="flex flex-col gap-1">
+            {(showAll ? ordered : ordered.slice(0, 5)).map((e) => (
+              <li
+                key={e.id}
+                className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-xs"
+                style={{ background: "var(--heal-blue-50)" }}
+              >
+                <span className="shrink-0 text-[11px]" style={{ color: "var(--heal-muted)" }}>
+                  {e.date.slice(5)}
+                </span>
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="font-medium">{e.type}</span>
+                  {e.minutes !== undefined && ` · ${e.minutes} 分钟`}
+                  {e.distanceKm !== undefined && ` · ${e.distanceKm}km`}
+                  {e.note && <span style={{ color: "var(--heal-muted)" }}>{` · ${e.note}`}</span>}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(e.id, `${e.date.slice(5)} ${e.type}`)}
+                  aria-label={`删除 ${e.date} 的${e.type}记录`}
+                  className="shrink-0 opacity-50"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
