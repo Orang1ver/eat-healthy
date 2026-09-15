@@ -14,10 +14,7 @@ import { getDisabledTags } from "./lib/mutualExclusion";
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./lib/tags";
 import { addCommonIngredient, addMealRecord, loadCheckin, loadCommonIngredients, loadHealthProfile, loadMealRecords, loadTakeoutDishes, loadUserProfile, loadWeeklyInsight } from "./lib/storage";
 import { buildHealthContext, calcDailyTargets } from "./lib/health";
-import { loadRewards } from "./lib/storage";
-import { calcCurrentStreak } from "./lib/rewards";
-import { cupsRemaining, DEFAULT_CUP_ML, progressOf } from "./lib/steps";
-import { loadPrefs } from "./lib/prefs";
+import { HealthDashboard } from "./components/HealthDashboard";
 import { todayISO, weekStartOf } from "./lib/date";
 import type { CommonIngredient, Dish, TakeoutDish } from "./lib/types";
 
@@ -53,30 +50,12 @@ export default function Home() {
   const [saveTarget, setSaveTarget] = useState<TakeoutPick | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
 
-  // 今日进度概览（有健康档案时才显示）
-  const [today, setToday] = useState<{ water: number; waterTarget: number; steps: number; stepsTarget: number } | null>(null);
-  const [streakText, setStreakText] = useState("");
-  /** 我的杯子容量：首页的"还差几杯"要和健康页同一个口径 */
-  const [cupMl, setCupMl] = useState(DEFAULT_CUP_ML);
+  /** 有没有健康档案：没有就给一句引导，有则交给仪表盘组件（它自己读 localStorage） */
+  const [hasProfile, setHasProfile] = useState(false);
 
   useEffect(() => {
     setCommonIngredients(loadCommonIngredients());
-    setCupMl(loadPrefs().cupMl);
-    const profile = loadHealthProfile();
-    if (profile) {
-      const t = calcDailyTargets(profile);
-      const c = loadCheckin(todayISO());
-      setToday({
-        water: c?.waterMl ?? 0,
-        waterTarget: t.waterTarget,
-        steps: c?.steps ?? 0,
-        stepsTarget: t.stepsTarget,
-      });
-      // 连续天数：今天已达标就从今天数，否则从昨天数（避免白天打开显示 0 天）
-      const rewards = loadRewards();
-      const n = calcCurrentStreak(rewards.days, todayISO());
-      if (n > 0) setStreakText(`🔥 连续 ${n} 天`);
-    }
+    setHasProfile(!!loadHealthProfile());
   }, []);
 
   // 把健康档案 + 今日打卡拼成上下文，随每次推荐发给 AI
@@ -244,54 +223,12 @@ export default function Home() {
 
         <IOSInstallHint />
 
-        {today && (
-          <Link href="/health" className="heal-card mb-4 flex items-center justify-between gap-3 p-3">
-            <div className="min-w-0 flex-1">
-              <div className="mb-1.5 flex items-center justify-between text-xs font-medium">
-                <span>今日进度</span>
-                {streakText && <span style={{ color: "var(--heal-amber-deep)" }}>{streakText}</span>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  {
-                    label: "💧",
-                    cur: today.water,
-                    target: today.waterTarget,
-                    unit: "ml",
-                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差约 ${cupsRemaining(p.remaining, cupMl)} 杯`),
-                  },
-                  {
-                    label: "🚶",
-                    cur: today.steps,
-                    target: today.stepsTarget,
-                    unit: "步",
-                    tail: (p: ReturnType<typeof progressOf>) => (p.done ? "已达标 🎉" : `还差 ${p.remaining} 步`),
-                  },
-                ].map((row) => {
-                  const p = progressOf(row.cur, row.target);
-                  return (
-                    <div key={row.unit} className="flex items-center gap-2">
-                      <span className="w-4 text-xs">{row.label}</span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: "var(--heal-blue-50)" }}>
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${p.pct}%`, background: p.done ? "var(--heal-blue-accent)" : "var(--heal-amber-accent)" }}
-                        />
-                      </div>
-                      <span className="whitespace-nowrap text-[10px]" style={{ color: "var(--heal-muted)" }}>
-                        {row.cur}/{row.target}
-                        {row.unit === "ml" ? "" : "步"} · {row.tail(p)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <span className="shrink-0 text-lg">›</span>
+        {/* 健康仪表盘（紧凑版：进度环 + 体重/连续一行），整块点进健康小屋做记录 */}
+        {hasProfile ? (
+          <Link href="/health" className="block">
+            <HealthDashboard compact />
           </Link>
-        )}
-
-        {!today && (
+        ) : (
           <Link href="/health" className="heal-card mb-4 flex items-center justify-between gap-2 p-3 text-xs" style={{ color: "var(--heal-muted)" }}>
             <span>还没填健康档案 —— 填一下就能看到每天该喝多少水、走多少步</span>
             <span className="shrink-0 text-lg">›</span>

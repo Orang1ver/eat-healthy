@@ -15,6 +15,15 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.5.4",
+    date: "2026-09-15",
+    highlights: [
+      "新增健康仪表盘：喝水/步数进度环 + 最近 7 天趋势条 + 体重迷你曲线 + 连续与徽章",
+      "首页是紧凑版（两个环 + 体重/连续一行），健康小屋顶部是完整版",
+      "手写 SVG 不引图表库；只是展示层，记录与数据都没动",
+    ],
+  },
+  {
     version: "1.5.3",
     date: "2026-09-15",
     highlights: [

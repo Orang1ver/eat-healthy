@@ -18,6 +18,7 @@ import {
 } from "../lib/rewards";
 import { WeightCard } from "../components/WeightCard";
 import { ExerciseCard } from "../components/ExerciseCard";
+import { HealthDashboard } from "../components/HealthDashboard";
 // 懒加载：motion + 彩带库只在庆祝弹窗打开时才下载，不拖慢健康页首屏
 const RewardDialog = dynamic(() => import("../components/RewardDialog").then((m) => m.RewardDialog), {
   ssr: false,
@@ -82,6 +83,12 @@ export default function HealthPage() {
   /** 「直接加多少 ml」输入框 */
   const [customMl, setCustomMl] = useState("");
 
+  /**
+   * 顶部仪表盘的重读信号：每次写入（打卡 / 体重 / 档案）加一，仪表盘就会重新
+   * 从 localStorage 现算一遍 —— 否则它显示的是 mount 时的旧快照。
+   */
+  const [dataVersion, setDataVersion] = useState(0);
+
   /** 能补录的最早日期：今天往前 30 天 */
   const earliestDate = addDays(today, -BACKFILL_DAYS);
   const canGoPrev = selectedDate > earliestDate;
@@ -142,6 +149,8 @@ export default function HealthPage() {
     }
     setFormError("");
     setProfile(saveHealthProfile({ sex, age, heightCm, weightKg, activityLevel, goal, allergies, conditions }));
+    // 目标变了，仪表盘里的环与"还差"要按新目标重算
+    setDataVersion((v) => v + 1);
   }
 
   /**
@@ -153,6 +162,8 @@ export default function HealthPage() {
   function updateCheckin(patch: Parameters<typeof saveCheckin>[1]) {
     const next = saveCheckin(selectedDate, patch);
     setCheckin(next);
+    // 顶部的环与趋势条要跟着动
+    setDataVersion((v) => v + 1);
 
     const completion = evaluateCheckin(next, targets);
     if (!completion.allDone) {
@@ -238,6 +249,10 @@ export default function HealthPage() {
             ← 返回首页
           </Link>
         </header>
+
+        {/* 仪表盘：进度环（喝水/步数）+ 最近 7 天趋势条 + 体重迷你曲线 + 连续与徽章。
+            没填档案时它自己不渲染（下面的蓝色引导卡会告诉用户先填档案）。 */}
+        <HealthDashboard reloadKey={dataVersion} />
 
         {!profile && (
           <div className="heal-card mb-4 p-4 text-sm leading-7" style={{ background: "var(--heal-blue-50)", color: "var(--heal-blue-text)" }}>
@@ -646,6 +661,8 @@ export default function HealthPage() {
             });
             setProfile(next);
             setWeightKg(kg);
+            // 体重变了 → 仪表盘上的体重与迷你曲线也要重算
+            setDataVersion((v) => v + 1);
           }}
         />
 

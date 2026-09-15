@@ -14,7 +14,7 @@ import type {
   WeeklyInsight,
   WeightEntry,
 } from "./types";
-import { approxTimeForSlot, mealSlotFromTime, weekStartOf } from "./date";
+import { addDays, approxTimeForSlot, mealSlotFromTime, weekStartOf } from "./date";
 import { normalizeRewards } from "./rewards";
 
 const KEYS = {
@@ -378,6 +378,19 @@ export function getCheckinsInWeek(weekStartISO: string): DailyCheckin[] {
   const all = read<Record<string, DailyCheckin>>(KEYS.dailyCheckins, {});
   return Object.values(all)
     .filter((c) => weekStartOf(c.date) === weekStartISO)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * 最近 N 天（含今天）的打卡，升序。
+ * 用"滚动窗口"而不是自然周：仪表盘上的 7 根柱子要的是"最近的走势"，
+ * 周一打开时不该只剩一根柱子（自然周那种读法留给「本周打卡」卡）。
+ */
+export function getRecentCheckins(days: number, todayISOStr: string): DailyCheckin[] {
+  const from = addDays(todayISOStr, -(days - 1));
+  const all = read<Record<string, DailyCheckin>>(KEYS.dailyCheckins, {});
+  return Object.values(all)
+    .filter((c) => c.date >= from && c.date <= todayISOStr)
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
