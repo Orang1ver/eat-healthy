@@ -285,6 +285,19 @@ export function importTakeoutDishes(
   return addTakeoutDishes(incoming, { overwriteSameName: opts.overwriteSameName });
 }
 
+/**
+ * 批量**只改品类**：一次读、一次写，菜名/商家/价格/口味/忌口全部原样保留。
+ *
+ * 给"重新整理分类"用。写之前由调用方 `pushTakeoutUndo` 存快照，所以这里不负责撤销；
+ * 传入里没提到的菜（例如模型漏答的）保持原样，不会被清成空。
+ */
+export function applyTakeoutCategories(pairs: { id: string; category: string }[]): TakeoutDish[] {
+  const map = new Map(pairs.map((p) => [p.id, p.category]));
+  const next = loadTakeoutDishes().map((d) => (map.has(d.id) ? { ...d, category: map.get(d.id) as string } : d));
+  saveTakeoutDishes(next);
+  return next;
+}
+
 /** 修改一道菜；改完同商家同名会与别的菜撞车时拒绝（保持库内不重复） */
 export function updateTakeoutDish(id: string, patch: Partial<Omit<TakeoutDish, "id">>): boolean {
   const list = loadTakeoutDishes();

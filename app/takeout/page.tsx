@@ -5,9 +5,10 @@ import Link from "next/link";
 import { TagChips } from "../components/TagChips";
 import { EditDishDialog } from "../components/EditDishDialog";
 import { CategoryChips } from "../components/CategoryChips";
-import { importTakeout } from "../lib/ai";
+import { importTakeout, recategorizeTakeoutDishes } from "../lib/ai";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
-import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, renameTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
+import { TAKEOUT_CATEGORIES } from "../lib/takeoutCategories";
+import { loadTakeoutDishes, addTakeoutDishes, applyTakeoutCategories, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, renameTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
 import { categoryCounts, filterDishes, groupByCategory, groupByRestaurant } from "../lib/takeoutView";
 import { fileToDataUrls, MAX_SLICES } from "../lib/image";
 import type { TakeoutDish } from "../lib/types";
@@ -15,6 +16,9 @@ import type { TakeoutDish } from "../lib/types";
 /** 一次最多接受多少「段」图片。长图会切成多段（普通手机截图也常被切成 2 段），
  *  所以比张数宽松；张数较多时接口的单边限制会降到 4096，而我们的段单边约 1600，安全。 */
 const MAX_SHOTS = 24;
+
+/** 「重新整理分类」预览里的一条改动（只改品类） */
+type RecatChange = { id: string; name: string; restaurant: string; from: string; to: string };
 
 export default function TakeoutLibraryPage() {
   const [dishes, setDishes] = useState<TakeoutDish[]>([]);
@@ -30,13 +34,22 @@ export default function TakeoutLibraryPage() {
   // 手动添加表单
   const [mRestaurant, setMRestaurant] = useState("");
   const [mName, setMName] = useState("");
-  const [mCategory, setMCategory] = useState("");
+  const [mCategory, setMCategory] = useState<string>("其他");
   const [mPrice, setMPrice] = useState("");
   const [mFlavors, setMFlavors] = useState<string[]>([]);
   const [mAvoids, setMAvoids] = useState<string[]>([]);
 
   // 编辑菜品
   const [editing, setEditing] = useState<TakeoutDish | null>(null);
+
+  /**
+   * 「重新整理分类」的状态：running = 正在问 AI（带进度），preview = 改动还没写库、等用户确认。
+   * 写库只发生在点「应用」时，且先 pushTakeoutUndo，所以随时能撤销。
+   */
+  const [recat, setRecat] = useState<
+    { phase: "running"; done: number; total: number } | { phase: "preview"; changes: RecatChange[] } | null
+  >(null);
+  const [recatErr, setRecatErr] = useState("");
 
   // 导入策略
   const [overwriteSameName, setOverwriteSameName] = useState(true);
@@ -102,6 +115,17 @@ export default function TakeoutLibraryPage() {
   const visible = useMemo(() => filterDishes(dishes, { category: activeCategory }), [dishes, activeCategory]);
   const visibleMerchants = useMemo(() => groupByRestaurant(visible), [visible]);
   const visibleCategories = useMemo(() => groupByCategory(visible), [visible]);
+
+  /** 分类整理预览的汇总（"快餐 → 盖浇饭（12）"）：先看结论，再逐条核对 */
+  const recatSummary = useMemo(() => {
+    if (recat?.phase !== "preview") return [] as [string, number][];
+    const m = new Map<string, number>();
+    for (const c of recat.changes) {
+      const k = `${c.from} → ${c.to}`;
+      m.set(k, (m.get(k) || 0) + 1);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+  }, [recat]);
 
   async function importFromText() {
     if (!importText.trim() && shots.length === 0) return;
@@ -235,6 +259,47 @@ export default function TakeoutLibraryPage() {
     setDishes(loadTakeoutDishes());
     setUndo(peekTakeoutUndo());
     setLibMsg("已恢复示例库");
+  }
+
+  /**
+   * 让 AI 把库里每道菜的品类重判一遍 —— **只算不写**，结果先给用户看（预览），
+   * 点「应用」才写库。任一批请求失败就整体放弃，不至于写进去一半。
+   */
+  async function handleRecategorize() {
+    setRecatErr("");
+    setLibMsg("");
+    setRecat({ phase: "running", done: 0, total: dishes.length });
+    try {
+      const pairs = await recategorizeTakeoutDishes(dishes, (done, total) => setRecat({ phase: "running", done, total }));
+      const byId = new Map(dishes.map((d) => [d.id, d]));
+      const changes: RecatChange[] = [];
+      for (const p of pairs) {
+        const d = byId.get(p.id);
+        if (!d) continue;
+        const from = (d.category || "").trim() || "其他";
+        if (from === p.category) continue; // 没变的不用打扰用户
+        changes.push({ id: d.id, name: d.name, restaurant: d.restaurant, from, to: p.category });
+      }
+      setRecat(null);
+      if (changes.length === 0) {
+        setLibMsg("看了一下，分类没有需要改的 👍");
+        return;
+      }
+      setRecat({ phase: "preview", changes });
+    } catch (e) {
+      setRecat(null);
+      setRecatErr(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /** 把预览里的改动写进菜单库（先存快照，配合上面的「撤销」） */
+  function applyRecategorize() {
+    if (recat?.phase !== "preview") return;
+    pushTakeoutUndo(`重新整理分类（${recat.changes.length} 道）`, loadTakeoutDishes());
+    setDishes(applyTakeoutCategories(recat.changes.map((c) => ({ id: c.id, category: c.to }))));
+    setUndo(peekTakeoutUndo());
+    setLibMsg(`已重新整理 ${recat.changes.length} 道菜的品类（可用上面的「撤销」回退）`);
+    setRecat(null);
   }
 
   /**
@@ -373,7 +438,20 @@ export default function TakeoutLibraryPage() {
           <div className="mb-2 grid grid-cols-2 gap-2">
             <input className="rounded-xl border p-2 text-sm" placeholder="商家/窗口（可留空）" value={mRestaurant} onChange={(e) => setMRestaurant(e.target.value)} style={{ borderColor: "var(--heal-card-border)" }} />
             <input className="rounded-xl border p-2 text-sm" placeholder="菜名（必填）" value={mName} onChange={(e) => setMName(e.target.value)} style={{ borderColor: "var(--heal-card-border)" }} />
-            <input className="rounded-xl border p-2 text-sm" placeholder="类别，如 盖浇饭" value={mCategory} onChange={(e) => setMCategory(e.target.value)} style={{ borderColor: "var(--heal-card-border)" }} />
+            {/* 类别改成固定下拉：自由文本正是"快餐/快餐类/快餐简餐"一地鸡毛的来源 */}
+            <select
+              aria-label="类别"
+              className="rounded-xl border p-2 text-sm"
+              value={mCategory}
+              onChange={(e) => setMCategory(e.target.value)}
+              style={{ borderColor: "var(--heal-card-border)" }}
+            >
+              {TAKEOUT_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
             <input className="rounded-xl border p-2 text-sm" placeholder="价格区间，如 ¥12-15" value={mPrice} onChange={(e) => setMPrice(e.target.value)} style={{ borderColor: "var(--heal-card-border)" }} />
           </div>
           <span className="mb-1 block text-xs">口味标签</span>
@@ -458,7 +536,55 @@ export default function TakeoutLibraryPage() {
                 onSelect={setPickedCategory}
                 label="品类"
               />
+
+              {/* AI 重新整理分类：只算不写，先给预览 */}
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={recat?.phase === "running"}
+                  onClick={handleRecategorize}
+                  className="heal-btn heal-btn-ghost px-2.5 py-1 text-[12px]"
+                >
+                  {recat?.phase === "running" ? `🪄 整理中 ${recat.done}/${recat.total}…` : "🪄 重新整理分类"}
+                </button>
+                <span className="text-[12px] leading-5" style={{ color: "var(--heal-muted)" }}>
+                  让 AI 按固定大类重判一遍，只改品类；写库前先给你看
+                </span>
+              </div>
             </>
+          )}
+
+          {recatErr && <p className="mb-2 text-[12px] leading-5 text-rose-600">{recatErr}</p>}
+
+          {/* 预览：确认前不写库 */}
+          {recat?.phase === "preview" && (
+            <div className="mb-3 rounded-2xl p-3" style={{ background: "var(--heal-blue-50)" }}>
+              <div className="mb-1 text-xs font-medium" style={{ color: "var(--heal-blue-text)" }}>
+                🪄 分类整理预览：{recat.changes.length} 道菜会改（菜名/价格/口味都不动）
+              </div>
+              <div className="mb-2 text-[12px] leading-5" style={{ color: "var(--heal-blue-text)" }}>
+                {recatSummary.map(([k, n]) => `${k}（${n}）`).join(" · ")}
+              </div>
+              <div
+                className="mb-2 max-h-52 overflow-y-auto rounded-xl p-2 text-[12px] leading-6"
+                style={{ background: "var(--heal-card-bg)" }}
+              >
+                {recat.changes.map((c) => (
+                  <div key={c.id}>
+                    <span className="font-medium">{c.name}</span>
+                    <span style={{ color: "var(--heal-muted)" }}>（{c.restaurant}）</span>　{c.from} → <b>{c.to}</b>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setRecat(null)} className="heal-btn heal-btn-ghost px-3 py-2 text-sm">
+                  取消
+                </button>
+                <button type="button" onClick={applyRecategorize} className="heal-btn heal-btn-primary px-3 py-2 text-sm">
+                  应用这 {recat.changes.length} 处
+                </button>
+              </div>
+            </div>
           )}
 
           {dishes.length === 0 && (

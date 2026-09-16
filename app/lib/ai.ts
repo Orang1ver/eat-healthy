@@ -1,8 +1,9 @@
 "use client";
 
-import { buildImportTakeoutPrompt, buildRecommendPrompt, buildTakeoutPrompt, buildUpdateProfilePrompt, buildWeeklyInsightPrompt } from "./prompts";
+import { buildImportTakeoutPrompt, buildRecategorizePrompt, buildRecommendPrompt, buildTakeoutPrompt, buildUpdateProfilePrompt, buildWeeklyInsightPrompt } from "./prompts";
 import { chatJSON, chatText, visionJSON } from "./deepseek";
 import { AVOID_TAGS, FLAVOR_TAGS, isSeasoning, type PortionPresetKey } from "./tags";
+import { canonicalCategory } from "./takeoutCategories";
 import type { Dish, DishIngredient, TakeoutDish } from "./types";
 
 function strArr(v: unknown): string[] {
@@ -119,7 +120,9 @@ function toTakeoutDishes(rows: Partial<TakeoutDish>[] | undefined, fallbackMerch
     .map((d) => ({
       restaurant: String(d.restaurant || fallbackMerchant || "学校食堂"),
       name: String(d.name).trim(),
-      category: String(d.category || "其他"),
+      // 品类一律收敛到固定大类：模型写近义词（"快餐类""米线"…）也不让它们进库；
+      // 遇到"快餐/快餐类/其他"这类兜底说法时让菜名参与判断（见 canonicalCategory）
+      category: canonicalCategory(String(d.category || ""), String(d.name)),
       priceRange: d.priceRange ? String(d.priceRange) : undefined,
       flavorTags: strArr(d.flavorTags),
       avoidConflicts: strArr(d.avoidConflicts),
@@ -226,4 +229,45 @@ export async function importTakeout(input: {
     throw new Error("没能从描述里识别出菜品，试着写具体菜名，如「一食堂有黄焖鸡米饭和麻辣香锅」");
   }
   return dishes;
+}
+
+// ---------- 菜单库：重新整理分类 ----------
+
+/** 一次送给模型多少道菜：太少费钱、太多模型会偷懒（这个量约 1~2k token，稳） */
+const RECATEGORIZE_BATCH = 40;
+
+/**
+ * 把库里已有的菜重判一遍品类，**只回 { id, category }**，不碰菜名/价格/口味。
+ *
+ * 安全设计：
+ * - 分批请求（`RECATEGORIZE_BATCH`），任一批失败就整体抛出，调用方不会写库；
+ * - 模型返回的 id 不在这一批里就丢弃（防它编 id 或改菜名）；
+ * - 品类再过一遍 `canonicalCategory`，保证写回的一定是固定大类；
+ * - **模型没返回的菜不出现在结果里** —— 调用方按 id 对齐，这些菜保持原样，不会被清空。
+ */
+export async function recategorizeTakeoutDishes(
+  dishes: TakeoutDish[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ id: string; category: string }[]> {
+  if (dishes.length === 0) return [];
+  const total = dishes.length;
+  const out: { id: string; category: string }[] = [];
+
+  for (let i = 0; i < dishes.length; i += RECATEGORIZE_BATCH) {
+    const batch = dishes.slice(i, i + RECATEGORIZE_BATCH);
+    const prompt = buildRecategorizePrompt({
+      dishes: batch.map((d) => ({ id: d.id, restaurant: d.restaurant, name: d.name, category: d.category })),
+    });
+    const data = await chatJSON<{ items?: { id?: string; category?: string }[] }>(prompt, 0.1);
+    const byId = new Map(batch.map((d) => [d.id, d]));
+    for (const it of data.items || []) {
+      const id = typeof it?.id === "string" ? it.id.trim() : "";
+      const dish = byId.get(id);
+      if (!dish) continue; // 模型编的 id / 改过的菜名，一律忽略
+      out.push({ id, category: canonicalCategory(it?.category, dish.name) });
+    }
+    onProgress?.(Math.min(i + batch.length, total), total);
+  }
+
+  return out;
 }

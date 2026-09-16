@@ -3,7 +3,7 @@
     "id": "t1",
     "restaurant": "阿香米线",
     "name": "番茄鸡蛋米线",
-    "category": "云南米线",
+    "category": "粉面米线",
     "priceRange": "¥18-22",
     "flavorTags": [
       "酸辣",
@@ -15,7 +15,7 @@
     "id": "t2",
     "restaurant": "阿香米线",
     "name": "微辣牛肉米线",
-    "category": "云南米线",
+    "category": "粉面米线",
     "priceRange": "¥22-26",
     "flavorTags": [
       "微辣",
@@ -30,7 +30,7 @@
     "id": "t3",
     "restaurant": "杨国福麻辣烫",
     "name": "番茄锅底麻辣烫",
-    "category": "麻辣烫",
+    "category": "麻辣烫·香锅",
     "priceRange": "¥25-35",
     "flavorTags": [
       "微辣",
@@ -44,7 +44,7 @@
     "id": "t4",
     "restaurant": "杨国福麻辣烫",
     "name": "清汤锅底麻辣烫",
-    "category": "麻辣烫",
+    "category": "麻辣烫·香锅",
     "priceRange": "¥22-32",
     "flavorTags": [
       "清淡",
@@ -56,7 +56,7 @@
     "id": "t5",
     "restaurant": "绿茶轻食",
     "name": "鸡胸肉藜麦沙拉",
-    "category": "沙拉轻食",
+    "category": "轻食沙拉",
     "priceRange": "¥28-32",
     "flavorTags": [
       "清淡"
@@ -70,7 +70,7 @@
     "id": "t6",
     "restaurant": "绿茶轻食",
     "name": "牛油果虾仁沙拉",
-    "category": "沙拉轻食",
+    "category": "轻食沙拉",
     "priceRange": "¥32-38",
     "flavorTags": [
       "清淡",
@@ -84,7 +84,7 @@
     "id": "t7",
     "restaurant": "西贝莜面村",
     "name": "羊肉烩面",
-    "category": "面食简餐",
+    "category": "面食",
     "priceRange": "¥28-34",
     "flavorTags": [
       "咸鲜"
@@ -97,7 +97,7 @@
     "id": "t8",
     "restaurant": "西贝莜面村",
     "name": "酸汤水饺",
-    "category": "面食简餐",
+    "category": "面食",
     "priceRange": "¥26-30",
     "flavorTags": [
       "酸辣"
@@ -125,7 +125,7 @@
     "id": "t10",
     "restaurant": "老乡鸡",
     "name": "黄焖鸡米饭",
-    "category": "快餐简餐",
+    "category": "盖浇饭",
     "priceRange": "¥20-24",
     "flavorTags": [
       "咸鲜",
@@ -139,7 +139,7 @@
     "id": "t11",
     "restaurant": "禾绿回转寿司",
     "name": "三文鱼亲子丼",
-    "category": "日式简餐",
+    "category": "盖浇饭",
     "priceRange": "¥38-45",
     "flavorTags": [
       "清淡",
@@ -153,7 +153,7 @@
     "id": "t12",
     "restaurant": "禾绿回转寿司",
     "name": "味噌汤套餐",
-    "category": "日式简餐",
+    "category": "汤",
     "priceRange": "¥30-36",
     "flavorTags": [
       "清淡"
@@ -164,7 +164,7 @@
     "id": "t13",
     "restaurant": "嘉禾一品粥店",
     "name": "皮蛋瘦肉粥",
-    "category": "粥铺",
+    "category": "粥品",
     "priceRange": "¥12-16",
     "flavorTags": [
       "清淡",
@@ -178,7 +178,7 @@
     "id": "t14",
     "restaurant": "嘉禾一品粥店",
     "name": "小米南瓜粥+小笼包",
-    "category": "粥铺",
+    "category": "粥品",
     "priceRange": "¥16-20",
     "flavorTags": [
       "清淡",
@@ -192,7 +192,7 @@
     "id": "t15",
     "restaurant": "费大厨辣椒炒肉",
     "name": "辣椒炒肉盖饭",
-    "category": "湘菜简餐",
+    "category": "盖浇饭",
     "priceRange": "¥24-28",
     "flavorTags": [
       "麻辣",
@@ -207,7 +207,7 @@
     "id": "t16",
     "restaurant": "袁记云饺",
     "name": "鲜虾云吞",
-    "category": "面点简餐",
+    "category": "面食",
     "priceRange": "¥18-22",
     "flavorTags": [
       "清淡",
@@ -247,7 +247,7 @@
     "id": "t19",
     "restaurant": "大米先生",
     "name": "番茄炖牛腩饭",
-    "category": "快餐简餐",
+    "category": "盖浇饭",
     "priceRange": "¥22-26",
     "flavorTags": [
       "咸鲜",
@@ -261,7 +261,7 @@
     "id": "t20",
     "restaurant": "大米先生",
     "name": "清蒸鲈鱼饭",
-    "category": "快餐简餐",
+    "category": "盖浇饭",
     "priceRange": "¥26-30",
     "flavorTags": [
       "清淡"
@@ -274,7 +274,7 @@
     "id": "t21",
     "restaurant": "探鱼",
     "name": "麻辣烤鱼（草鱼）",
-    "category": "烤鱼简餐",
+    "category": "烧烤炸物",
     "priceRange": "¥45-58",
     "flavorTags": [
       "麻辣",
@@ -290,7 +290,7 @@
     "id": "t22",
     "restaurant": "杨国福麻辣烫",
     "name": "麻辣锅底重辣麻辣烫",
-    "category": "麻辣烫",
+    "category": "麻辣烫·香锅",
     "priceRange": "¥28-38",
     "flavorTags": [
       "麻辣"
@@ -303,7 +303,7 @@
     "id": "t23",
     "restaurant": "蜀大侠",
     "name": "麻辣水煮肉片饭",
-    "category": "川菜简餐",
+    "category": "盖浇饭",
     "priceRange": "¥22-28",
     "flavorTags": [
       "麻辣",
@@ -318,7 +318,7 @@
     "id": "t24",
     "restaurant": "蜀大侠",
     "name": "夫妻肺片盖饭",
-    "category": "川菜简餐",
+    "category": "盖浇饭",
     "priceRange": "¥20-26",
     "flavorTags": [
       "麻辣",
@@ -333,7 +333,7 @@
     "id": "t25",
     "restaurant": "杨国福麻辣烫",
     "name": "全素麻辣烫",
-    "category": "麻辣烫",
+    "category": "麻辣烫·香锅",
     "priceRange": "¥20-28",
     "flavorTags": [
       "麻辣",
@@ -347,7 +347,7 @@
     "id": "t26",
     "restaurant": "觅食素麻辣香锅",
     "name": "素麻辣香锅（豆腐菌菇）",
-    "category": "素食川菜",
+    "category": "麻辣烫·香锅",
     "priceRange": "¥22-30",
     "flavorTags": [
       "麻辣",
@@ -387,7 +387,7 @@
     "id": "t29",
     "restaurant": "蜀大侠",
     "name": "麻辣豆腐脑盖饭",
-    "category": "川菜简餐",
+    "category": "盖浇饭",
     "priceRange": "¥16-22",
     "flavorTags": [
       "麻辣",

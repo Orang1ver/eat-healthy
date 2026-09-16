@@ -18,6 +18,14 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.8.0",
+    date: "2026-09-17",
+    highlights: [
+      "品类改成一套固定大类，导入和手填都只从里面选，不再冒出「快餐类」这类近义名字",
+      "菜单库新增「🪄 重新整理分类」：AI 把已有的菜重判一遍，先给改动清单、点了才写库，可撤销",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "2026-09-16",
     highlights: [
