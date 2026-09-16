@@ -18,6 +18,11 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.6.3",
+    date: "2026-09-16",
+    highlights: ["本周回顾里补录一餐时，可以直接从食堂/外卖库点菜，不用再手打菜名"],
+  },
+  {
     version: "1.6.2",
     date: "2026-09-15",
     highlights: [

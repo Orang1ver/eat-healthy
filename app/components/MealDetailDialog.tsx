@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { DISH_ROLES, type DishRole } from "../lib/tags";
 import { deleteMealRecord, updateMealRecord } from "../lib/storage";
-import type { Dish, MealRecord } from "../lib/types";
+import type { Dish, MealRecord, TakeoutDish } from "../lib/types";
+import { TakeoutPicker, dishFromTakeout } from "./TakeoutPicker";
 
 export function MealDetailDialog({
   meal,
@@ -17,12 +18,15 @@ export function MealDetailDialog({
   const [editing, setEditing] = useState(false);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [timeValue, setTimeValue] = useState("");
+  /** 编辑态里的「从菜单库加菜」默认收起：编辑表单本来就挤，需要时才展开 */
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!meal) return null;
 
   function startEdit() {
     setDishes(meal!.dishes.map((d) => ({ ...d, ingredients: [...d.ingredients] })));
     setTimeValue(meal!.time);
+    setPickerOpen(false);
     setEditing(true);
   }
 
@@ -51,9 +55,18 @@ export function MealDetailDialog({
     setDishes((prev) => [...prev, { name: "", role: "小菜", ingredients: [], flavorTags: [] }]);
   }
 
+  /** 从菜单库加/删一道菜（按菜名判定，见 TakeoutPicker 的说明） */
+  function toggleFromLibrary(d: TakeoutDish) {
+    setDishes((prev) => {
+      const at = prev.findIndex((x) => x.name === d.name);
+      if (at >= 0) return prev.filter((_, i) => i !== at);
+      return [...prev, dishFromTakeout(d)];
+    });
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
-      <div className="heal-card w-full max-w-md p-5">
+      <div className="heal-card max-h-[85vh] w-full max-w-md overflow-y-auto p-5">
         <div className="mb-1 flex items-baseline justify-between">
           <h2 className="text-base font-medium">{meal.title || meal.dishes[0]?.name || "这一餐"}</h2>
           <span className="text-xs" style={{ color: "var(--heal-muted)" }}>
@@ -145,12 +158,32 @@ export function MealDetailDialog({
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={addDish} className="heal-btn heal-btn-ghost self-start px-2 py-1 text-xs">
-                + 新增一道菜
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={addDish} className="heal-btn heal-btn-ghost px-2 py-1 text-xs">
+                  + 新增一道菜
+                </button>
+                {/* 编辑旧记录时也常是"忘了记外卖"，所以这里也给一个从库里挑的入口（默认收起） */}
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen((v) => !v)}
+                  aria-expanded={pickerOpen}
+                  className="heal-btn heal-btn-ghost px-2 py-1 text-xs"
+                >
+                  🍱 从菜单库加菜
+                </button>
+              </div>
             </div>
+
+            {pickerOpen && <TakeoutPicker pickedNames={dishes.map((d) => d.name)} onToggle={toggleFromLibrary} showEmptyHint />}
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setEditing(false)} className="heal-btn heal-btn-ghost px-3 py-2 text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setPickerOpen(false);
+                }}
+                className="heal-btn heal-btn-ghost px-3 py-2 text-sm"
+              >
                 取消
               </button>
               <button type="button" onClick={save} className="heal-btn heal-btn-primary px-3 py-2 text-sm">
