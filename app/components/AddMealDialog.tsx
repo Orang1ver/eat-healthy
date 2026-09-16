@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { addMealRecord } from "../lib/storage";
 import { nowHM } from "../lib/date";
 import { DISH_ROLES, type DishRole } from "../lib/tags";
-import type { Dish, MealChannel } from "../lib/types";
+import type { Dish, MealChannel, TakeoutDish } from "../lib/types";
+import { TakeoutPicker, dishFromTakeout } from "./TakeoutPicker";
 
 export function AddMealDialog({
   open,
@@ -45,6 +46,20 @@ export function AddMealDialog({
     setDishes((prev) => [...prev, { name: "", role: "小菜", ingredients: [], flavorTags: [] }]);
   }
 
+  /**
+   * 从菜单库点菜：已经在餐里的（同名）再点一下就移除；否则作为一道菜加进来。
+   * 库里的菜都是食堂/外卖来的，所以顺手把渠道切到「外卖」—— 按钮上看得见，想改回来随时能点。
+   */
+  function toggleFromLibrary(d: TakeoutDish) {
+    const at = dishes.findIndex((x) => x.name === d.name);
+    if (at >= 0) {
+      setDishes(dishes.filter((_, i) => i !== at));
+      return;
+    }
+    setDishes([...dishes, dishFromTakeout(d)]);
+    setChannel("外卖");
+  }
+
   function save() {
     const validDishes = dishes.filter((d) => d.name.trim());
     if (validDishes.length === 0) return;
@@ -64,7 +79,7 @@ export function AddMealDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center heal-scrim p-4">
-      <div className="heal-card w-full max-w-md p-5">
+      <div className="heal-card max-h-[85vh] w-full max-w-md overflow-y-auto p-5">
         <h2 className="mb-3 text-base font-medium">手动补录这一餐</h2>
         <p className="mb-3 text-xs" style={{ color: "var(--heal-muted)" }}>
           自由选择吃饭的具体时间，不用套用固定的早/午/晚餐时段。
@@ -99,6 +114,15 @@ export function AddMealDialog({
             </button>
           ))}
         </div>
+
+        {/* 从菜单库直接点菜：吃的是食堂/外卖时，不用再照着菜名手打一遍。
+            两个渠道下都显示（选中会自动切到外卖），否则用户得先猜"是不是得切到外卖才有" */}
+        <TakeoutPicker
+          pickedNames={dishes.map((d) => d.name)}
+          onToggle={toggleFromLibrary}
+          hint="点一下就加进这餐，并记为外卖"
+          showEmptyHint={channel === "外卖"}
+        />
 
         <div className="mb-3 flex flex-col gap-2">
           {dishes.map((dish, i) => (
