@@ -18,6 +18,14 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.7.0",
+    date: "2026-09-16",
+    highlights: [
+      "菜单库能按品类看了：可切「按商家 / 按品类」，也能按品类筛选，每类都标了有几道菜",
+      "补录一餐时「从菜单库选」也能按品类筛",
+    ],
+  },
+  {
     version: "1.6.3",
     date: "2026-09-16",
     highlights: ["本周回顾里补录一餐时，可以直接从食堂/外卖库点菜，不用再手打菜名"],
