@@ -554,7 +554,17 @@ export default function TakeoutLibraryPage() {
             </>
           )}
 
-          {recatErr && <p className="mb-2 text-[12px] leading-5 text-rose-600">{recatErr}</p>}
+          {/* 失败时给一条能照做的提示 + 一个「重试」：这类失败多半是网络，重试常常就好了 */}
+          {recatErr && (
+            <div className="mb-3 flex items-start justify-between gap-2 rounded-2xl p-3" style={{ background: "var(--heal-amber-50)" }}>
+              <p className="text-[12px] leading-5" style={{ color: "var(--heal-amber-text)" }}>
+                {recatErr}
+              </p>
+              <button type="button" onClick={handleRecategorize} className="heal-btn heal-btn-ghost shrink-0 px-2.5 py-1 text-[12px]">
+                重试
+              </button>
+            </div>
+          )}
 
           {/* 预览：确认前不写库 */}
           {recat?.phase === "preview" && (

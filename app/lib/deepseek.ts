@@ -20,17 +20,45 @@ function requireKey(): string {
   return key;
 }
 
+/**
+ * 网络层失败（DNS 解析不了 / 连不上 / 被代理或插件拦了 / 设备离线）时，浏览器抛的是 TypeError：
+ * Chrome 说 "Failed to fetch"、Safari 说 "Load failed"、Firefox 说 "NetworkError…"。
+ * 这些说法用户看不懂，也分不清"是我没网"还是"Key 填错了" —— 而这两种情况该做的事完全不同，
+ * 所以统一翻成一句能照做的话，并给一条自查路径（去首页点一次生成推荐，就知道是不是全断了）。
+ *
+ * ⚠️ 只在**网络层**失败时替换；接口返回的 4xx/5xx 走下面原有的错误翻译，不要覆盖。
+ */
+function friendlyFetchError(e: unknown): Error {
+  const raw = e instanceof Error ? e.message : String(e);
+  if (/failed to fetch|load failed|networkerror|network request failed|fetch failed|err_/i.test(raw)) {
+    return new Error(
+      `网络请求发不出去（浏览器报「${raw}」）：这台设备没连上 api.deepseek.com。` +
+        "常见原因：① 当前网络不通 —— 换个 Wi-Fi 或用手机流量再试；" +
+        "② 开着 Steam++ / Watt Toolkit 之类的网络加速或代理 —— 关掉加速再试；" +
+        "③ 浏览器插件或防火墙把它拦了。" +
+        "想确认是不是所有 AI 功能都断了：去首页点一次「✨ 生成推荐」。",
+    );
+  }
+  return e instanceof Error ? e : new Error(raw);
+}
+
 async function chat(model: string, content: Content, opts: { temperature?: number; json?: boolean } = {}): Promise<string> {
-  const res = await fetch(`${BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${requireKey()}` },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content }],
-      temperature: opts.temperature ?? 0.5,
-      ...(opts.json ? { response_format: { type: "json_object" } } : {}),
-    }),
-  });
+  const key = requireKey(); // 先查 Key：没填 Key 时不该伪装成网络问题
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content }],
+        temperature: opts.temperature ?? 0.5,
+        ...(opts.json ? { response_format: { type: "json_object" } } : {}),
+      }),
+    });
+  } catch (e) {
+    throw friendlyFetchError(e);
+  }
   if (!res.ok) {
     let detail = "";
     try {

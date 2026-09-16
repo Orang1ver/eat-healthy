@@ -18,6 +18,13 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.8.1",
+    date: "2026-09-17",
+    highlights: [
+      "AI 功能连不上时不再只报 Failed to fetch，而是告诉你怎么查（换网络 / 关掉加速）；「重新整理分类」失败处还多了个「重试」",
+    ],
+  },
+  {
     version: "1.8.0",
     date: "2026-09-17",
     highlights: [
