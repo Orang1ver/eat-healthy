@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { loadTakeoutDishes } from "../lib/storage";
+import { categoryCounts, filterDishes, groupByRestaurant } from "../lib/takeoutView";
 import type { DishRole } from "../lib/tags";
 import type { Dish, TakeoutDish } from "../lib/types";
+import { CategoryChips } from "./CategoryChips";
 
 /** 一次最多渲染多少个匹配项：库里可能被导入几百道菜，全渲染会让弹窗在手机上很卡 */
 const MAX_RENDERED = 200;
@@ -64,25 +66,22 @@ export function TakeoutPicker({
    */
   const [dishes] = useState<TakeoutDish[]>(() => loadTakeoutDishes());
   const [q, setQ] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
 
-  const shown = useMemo(() => {
-    const kw = q.trim().toLowerCase();
-    if (!kw) return dishes;
-    return dishes.filter((d) => `${d.name}${d.restaurant}${d.category}`.toLowerCase().includes(kw));
-  }, [dishes, q]);
+  /** 品类 chip 用全库算（不随关键词抖动），位置稳定 */
+  const categories = useMemo(() => categoryCounts(dishes), [dishes]);
+  /** 选中的品类被改名/删光后自动退回「全部」（派生值，不写 effect） */
+  const activeCategory = categories.some((c) => c.name === category) ? category : null;
+
+  const shown = useMemo(
+    () => filterDishes(dishes, { category: activeCategory, keyword: q }),
+    [dishes, activeCategory, q],
+  );
 
   /** 超出上限的部分不渲染，只提示缩小范围 */
   const limited = useMemo(() => shown.slice(0, MAX_RENDERED), [shown]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, TakeoutDish[]>();
-    for (const d of limited) {
-      const arr = map.get(d.restaurant) || [];
-      arr.push(d);
-      map.set(d.restaurant, arr);
-    }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [limited]);
+  const grouped = useMemo(() => groupByRestaurant(limited), [limited]);
 
   if (dishes.length === 0) {
     if (!showEmptyHint) return null;
@@ -109,16 +108,18 @@ export function TakeoutPicker({
         onChange={(e) => setQ(e.target.value)}
         style={{ borderColor: "var(--heal-card-border)" }}
       />
+      {/* 品类筛选用单行横滑：弹窗位置紧张，品类再多也不顶高（库页那边用换行） */}
+      <CategoryChips items={categories} total={dishes.length} active={activeCategory} onSelect={setCategory} layout="row" />
       {shown.length === 0 ? (
         <p className="py-2 text-center text-xs" style={{ color: "var(--heal-muted)" }}>
-          没有匹配的菜，换个关键词试试
+          {categories.length > 1 ? "没有匹配的菜，换个关键词或品类试试" : "没有匹配的菜，换个关键词试试"}
         </p>
       ) : (
         <div
           className="flex max-h-52 flex-col gap-2 overflow-y-auto rounded-2xl p-2"
           style={{ background: "var(--heal-bg)" }}
         >
-          {grouped.map(([restaurant, items]) => (
+          {grouped.map(({ restaurant, dishes: items }) => (
             <div key={restaurant}>
               <div className="mb-1 text-[12px]" style={{ color: "var(--heal-amber-deep)" }}>
                 🏠 {restaurant}

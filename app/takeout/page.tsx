@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TagChips } from "../components/TagChips";
 import { EditDishDialog } from "../components/EditDishDialog";
+import { CategoryChips } from "../components/CategoryChips";
 import { importTakeout } from "../lib/ai";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
 import { loadTakeoutDishes, addTakeoutDishes, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, renameTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
+import { categoryCounts, filterDishes, groupByCategory, groupByRestaurant } from "../lib/takeoutView";
 import { fileToDataUrls, MAX_SLICES } from "../lib/image";
 import type { TakeoutDish } from "../lib/types";
 
@@ -46,6 +48,10 @@ export default function TakeoutLibraryPage() {
   /** 正在改名的商家（就地变输入框，避免用 window.prompt —— iOS 主屏 App 上不可靠） */
   const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
 
+  /** 看库的方式与品类筛选：纯展示偏好，只放在内存里（刷新回到"按商家 + 全部"） */
+  const [view, setView] = useState<"restaurant" | "category">("restaurant");
+  const [pickedCategory, setPickedCategory] = useState<string | null>(null);
+
   useEffect(() => {
     setDishes(loadTakeoutDishes());
     setUndo(peekTakeoutUndo());
@@ -83,15 +89,19 @@ export default function TakeoutLibraryPage() {
     }
   }
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, TakeoutDish[]>();
-    for (const d of dishes) {
-      const arr = map.get(d.restaurant) || [];
-      arr.push(d);
-      map.set(d.restaurant, arr);
-    }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [dishes]);
+  /**
+   * 看库的两种维度：
+   * - `grouped` 是全库按商家分组（页面摘要、清空确认里的"多少个商家"也用它）；
+   * - `visible*` 是**筛选后**的结果，列表按 `view` 决定用商家还是品类分组。
+   * 库里几十上百道菜时只按商家看就是一面墙，所以有了品类视图 + 品类筛选。
+   */
+  const grouped = useMemo(() => groupByRestaurant(dishes), [dishes]);
+  const categories = useMemo(() => categoryCounts(dishes), [dishes]);
+  /** 选中的品类被删空/改名后自动退回「全部」——用派生值，不写 effect */
+  const activeCategory = categories.some((c) => c.name === pickedCategory) ? pickedCategory : null;
+  const visible = useMemo(() => filterDishes(dishes, { category: activeCategory }), [dishes, activeCategory]);
+  const visibleMerchants = useMemo(() => groupByRestaurant(visible), [visible]);
+  const visibleCategories = useMemo(() => groupByCategory(visible), [visible]);
 
   async function importFromText() {
     if (!importText.trim() && shots.length === 0) return;
@@ -227,6 +237,33 @@ export default function TakeoutLibraryPage() {
     setLibMsg("已恢复示例库");
   }
 
+  /**
+   * 菜品 pill（两种视图共用）。按品类看时把商家名带上 —— 品类标题只说明"是什么菜"，
+   * 不带店名就分不清是哪家的。点一下仍然是打开编辑弹窗。
+   */
+  function renderPills(items: TakeoutDish[], withRestaurant = false) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((d) => (
+          <button
+            key={d.id}
+            type="button"
+            onClick={() => setEditing(d)}
+            title="点击修改"
+            className="heal-pill flex items-center gap-1 text-xs transition-transform active:scale-95"
+          >
+            {d.name}
+            {d.priceRange ? <span style={{ color: "var(--heal-muted)" }}>{d.priceRange}</span> : null}
+            {withRestaurant ? (
+              <span style={{ color: "var(--heal-muted)", opacity: 0.8 }}>· {d.restaurant || "学校食堂"}</span>
+            ) : null}
+            <span className="ml-0.5 opacity-40">✏️</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen p-4 md:p-8" style={{ background: "var(--heal-bg)" }}>
       <div className="mx-auto max-w-2xl">
@@ -240,7 +277,7 @@ export default function TakeoutLibraryPage() {
         </header>
 
         <p className="mb-4 text-xs leading-6" style={{ color: "var(--heal-muted)" }}>
-          把你们学校食堂窗口和常点外卖告诉 AI，之后「点外卖」推荐就只会从这里面挑。共 <b>{dishes.length}</b> 道菜、{grouped.length} 个商家/窗口。
+          把你们学校食堂窗口和常点外卖告诉 AI，之后「点外卖」推荐就只会从这里面挑。共 <b>{dishes.length}</b> 道菜、{grouped.length} 个商家/窗口、{categories.length} 个品类。
         </p>
 
         {/* 智能导入：截图优先，文字补充 */}
@@ -390,90 +427,134 @@ export default function TakeoutLibraryPage() {
             </p>
           )}
 
+          {/* 浏览方式 + 品类筛选：菜单库大了以后，只按商家看是一面墙 */}
+          {dishes.length > 0 && (
+            <>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="text-[12px]" style={{ color: "var(--heal-muted)" }}>
+                  浏览
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={view === "restaurant"}
+                  onClick={() => setView("restaurant")}
+                  className={`heal-btn px-2.5 py-1 text-[12px] ${view === "restaurant" ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                >
+                  🏠 按商家
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={view === "category"}
+                  onClick={() => setView("category")}
+                  className={`heal-btn px-2.5 py-1 text-[12px] ${view === "category" ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                >
+                  🏷️ 按品类
+                </button>
+              </div>
+              <CategoryChips
+                items={categories}
+                total={dishes.length}
+                active={activeCategory}
+                onSelect={setPickedCategory}
+                label="品类"
+              />
+            </>
+          )}
+
           {dishes.length === 0 && (
             <p className="py-4 text-center text-xs" style={{ color: "var(--heal-muted)" }}>
               还是空的，先用上面的方式加点菜吧
             </p>
           )}
+
+          {/* 筛选后一道菜都没有（但库本身不是空的） */}
+          {dishes.length > 0 && visible.length === 0 && (
+            <p className="py-4 text-center text-xs" style={{ color: "var(--heal-muted)" }}>
+              这个品类下还没有菜
+            </p>
+          )}
           <div className="flex flex-col gap-3">
-            {grouped.map(([restaurant, items]) => (
-              <div key={restaurant}>
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  {renaming?.from === restaurant ? (
-                    /* 就地改名：避免用 window.prompt（iOS 主屏 App 上不可靠） */
-                    <>
-                      <input
-                        autoFocus
-                        aria-label="商家名称"
-                        className="min-w-0 flex-1 rounded-full border px-2 py-1.5 text-xs"
-                        value={renaming.value}
-                        onChange={(e) => setRenaming({ from: restaurant, value: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleRenameMerchant(restaurant, renaming.value);
-                          if (e.key === "Escape") setRenaming(null);
-                        }}
-                        style={{ borderColor: "var(--heal-card-border)" }}
-                      />
-                      <div className="flex shrink-0 gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleRenameMerchant(restaurant, renaming.value)}
-                          className="heal-btn heal-btn-primary px-2 py-1.5 text-[11px]"
-                        >
-                          保存
-                        </button>
-                        <button type="button" onClick={() => setRenaming(null)} className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]">
-                          取消
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
-                        🏠 {restaurant}
-                      </span>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setRenaming({ from: restaurant, value: restaurant })}
-                          className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]"
-                          title={`给「${restaurant}」改名（名下菜品一起改）`}
-                        >
-                          ✏️ 改名
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMerchant(restaurant, items.length)}
-                          className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]"
-                          style={{ color: "var(--heal-danger)" }}
-                          title={`删除「${restaurant}」的全部菜品`}
-                        >
-                          🗑️ 删除这家（{items.length} 道）
-                        </button>
-                      </div>
-                    </>
-                  )}
+            {/* 按商家：保留整家改名/删除（这是商家维度的操作） */}
+            {view === "restaurant" &&
+              visibleMerchants.map(({ restaurant, dishes: items }) => (
+                <div key={restaurant}>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    {renaming?.from === restaurant ? (
+                      /* 就地改名：避免用 window.prompt（iOS 主屏 App 上不可靠） */
+                      <>
+                        <input
+                          autoFocus
+                          aria-label="商家名称"
+                          className="min-w-0 flex-1 rounded-full border px-2 py-1.5 text-xs"
+                          value={renaming.value}
+                          onChange={(e) => setRenaming({ from: restaurant, value: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRenameMerchant(restaurant, renaming.value);
+                            if (e.key === "Escape") setRenaming(null);
+                          }}
+                          style={{ borderColor: "var(--heal-card-border)" }}
+                        />
+                        <div className="flex shrink-0 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleRenameMerchant(restaurant, renaming.value)}
+                            className="heal-btn heal-btn-primary px-2 py-1.5 text-[11px]"
+                          >
+                            保存
+                          </button>
+                          <button type="button" onClick={() => setRenaming(null)} className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]">
+                            取消
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                          🏠 {restaurant}
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setRenaming({ from: restaurant, value: restaurant })}
+                            className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]"
+                            title={`给「${restaurant}」改名（名下菜品一起改）`}
+                          >
+                            ✏️ 改名
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMerchant(restaurant, items.length)}
+                            className="heal-btn heal-btn-ghost px-2 py-1.5 text-[11px]"
+                            style={{ color: "var(--heal-danger)" }}
+                            title={`删除「${restaurant}」的全部菜品`}
+                          >
+                            🗑️ 删除这家（{items.length} 道）
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {renderPills(items)}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {items.map((d) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => setEditing(d)}
-                      title="点击修改"
-                      className="heal-pill flex items-center gap-1 text-xs transition-transform active:scale-95"
-                    >
-                      {d.name}
-                      {d.priceRange ? <span style={{ color: "var(--heal-muted)" }}>{d.priceRange}</span> : null}
-                      <span className="ml-0.5 opacity-40">✏️</span>
-                    </button>
-                  ))}
+              ))}
+
+            {/* 按品类：标题是品类，pill 上带出商家名（否则分不清是哪家的） */}
+            {view === "category" &&
+              visibleCategories.map(({ category, dishes: items }) => (
+                <div key={category}>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium" style={{ color: "var(--heal-amber-deep)" }}>
+                      🏷️ {category}（{items.length} 道）
+                    </span>
+                  </div>
+                  {renderPills(items, true)}
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
           <p className="mt-3 text-[12px]" style={{ color: "var(--heal-muted)" }}>
-            点任意菜品可以修改；点商家右侧可整家删除。删错了用上面的「撤销」挽回。
+            {view === "restaurant"
+              ? "点任意菜品可以修改；点商家右侧可整家删除。删错了用上面的「撤销」挽回。"
+              : "按品类查看时，点任意菜品可以改商家/品类/价格；整家改名或删除请切回「按商家」。"}
           </p>
         </div>
       </div>
