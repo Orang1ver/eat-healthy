@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { TagChips } from "./TagChips";
 import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
+import { TAKEOUT_CATEGORIES, canonicalCategory } from "../lib/takeoutCategories";
 import { loadTakeoutDishes, pushTakeoutUndo, removeTakeoutDish, updateTakeoutDish } from "../lib/storage";
 import type { TakeoutDish } from "../lib/types";
 
@@ -31,7 +32,7 @@ export function EditDishDialog({
     if (dish) {
       setRestaurant(dish.restaurant);
       setName(dish.name);
-      setCategory(dish.category || "");
+      setCategory(canonicalCategory(dish.category, dish.name));
       setPrice(dish.priceRange || "");
       setFlavors(dish.flavorTags || []);
       setAvoids(dish.avoidConflicts || []);
@@ -94,13 +95,19 @@ export function EditDishDialog({
             </div>
             <div>
               <label className="mb-1 block text-xs">类别</label>
-              <input
+              {/* 固定下拉：自由文本会写出"快餐类""快餐简餐"这类近义名字，按品类筛选就废了 */}
+              <select
                 className="w-full rounded-xl border p-2 text-sm"
-                placeholder="如 盖浇饭"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 style={{ borderColor: "var(--heal-card-border)" }}
-              />
+              >
+                {TAKEOUT_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="mb-1 block text-xs">价格</label>

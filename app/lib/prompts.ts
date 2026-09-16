@@ -1,4 +1,5 @@
 import { AVOID_TAGS, FLAVOR_TAGS, METHOD_TAGS, PORTION_PRESETS, type PortionPresetKey } from "./tags";
+import { TAKEOUT_CATEGORIES } from "./takeoutCategories";
 
 function hintsFor(defs: { label: string; promptHint: string }[], selected: string[]): string {
   return defs
@@ -130,7 +131,12 @@ ${input.avoidTagLabels.join("、")}
 【规则】
 ① 只拆"具体菜品"（如：黄焖鸡米饭、麻辣香锅、番茄鸡蛋盖浇饭），不要把"一楼""面食窗口"这类场景词当菜品；
 ② restaurant：如果我写了「商家/窗口：XXX」，则下面所有菜品的 restaurant 必须**一字不差照抄 XXX**，不要自己另编店名；如果我没写，才由你按上下文填（如：一食堂·麻辣烫窗口、美团·华莱士），完全没有依据时写"学校食堂"；
-③ category 填大类（如：盖浇饭、面食、麻辣烫、轻食、快餐、饮品）；
+③ category 只能从下面这套固定大类里选**一个**（照抄，不要自创、不要写近义词）：
+   ${TAKEOUT_CATEGORIES.join("、")}
+   按"这道菜主要是什么"来判：米饭打底的盖饭/套餐/丼/炒饭/拌饭→盖浇饭；面条/饺子/包子/馄饨/饼→面食；
+   米线/米粉/酸辣粉→粉面米线；麻辣烫/麻辣拌/冒菜/香锅→麻辣烫·香锅；汉堡炸鸡薯条/西式套餐→快餐简餐；
+   烧烤/炸串/烤鱼→烧烤炸物；粥→粥品；沙拉/轻食→轻食沙拉；汤/羹→汤；奶茶甜品饮料咖啡→甜品饮品。
+   **不许因为拿不准就默认填「快餐简餐」**：只有确实说不出类型时才用它，实在判不出请填「其他」；
 ④ priceRange 有就填（如 ¥12-15），没有省略；
 ⑤ avoidConflicts 填这个菜天然会和哪些忌口标签冲突（如：麻辣香锅→不吃辣；不需要臆造）；
 ⑥ 用户描述里的模糊表述（"大概十几块"）可以转成区间。
@@ -144,6 +150,41 @@ ${input.text}
     { "restaurant": "...", "name": "...", "category": "...", "priceRange": "¥...", "flavorTags": ["..."], "avoidConflicts": [] }
   ]
 }`;
+}
+
+/**
+ * 「重新整理分类」：把库里已有的菜重判一遍品类。
+ *
+ * 为什么单独一个提示词而不是复用导入那条：导入是"从零拆菜"，模型在一长串菜名里
+ * 很容易偷懒把一堆菜塞进"快餐"；这里每道菜都带着现有品类，而且明确要求
+ * **不许默认快餐、不许照抄原来的品类**（原来的不对才要重排）。
+ */
+export function buildRecategorizePrompt(input: {
+  dishes: { id: string; restaurant: string; name: string; category: string }[];
+}) {
+  const lines = input.dishes
+    .map((d) => `- id=${d.id} | 商家：${d.restaurant} | 菜名：${d.name} | 现在写的品类：${d.category || "（空）"}`)
+    .join("\n");
+
+  return `你在帮用户整理「菜单库」里菜品的品类。下面是一批菜品，每行是：id | 商家/窗口 | 菜名 | 现在写的品类。
+
+【规则】
+① category 只能从下面这套固定大类里选**一个**（照抄，不要自创、不要写近义词）：
+   ${TAKEOUT_CATEGORIES.join("、")}
+② 以菜名为主、商家名为辅判断：米饭打底的盖饭/套餐/丼/煲仔饭/炒饭/拌饭→盖浇饭；
+   面条/饺子/馄饨/云吞/包子/馒头/饼→面食；米线/米粉/酸辣粉/螺蛳粉→粉面米线；
+   麻辣烫/麻辣拌/冒菜/香锅→麻辣烫·香锅；汉堡/炸鸡/薯条/披萨/西式套餐→快餐简餐；
+   烧烤/炸串/烤鱼→烧烤炸物；粥→粥品；沙拉/轻食→轻食沙拉；汤/羹→汤；
+   奶茶/甜品/饮料/咖啡→甜品饮品；凉皮/卤味/烤肠等零嘴→小吃；炒菜类→家常炒菜。
+③ **不要默认填「快餐简餐」**，也**不要照抄"现在写的品类"** —— 用户就是因为现在的分类不对才要重排。
+   实在判断不出来（比如菜名只有"套餐"两个字）才填「其他」。
+④ 每道菜的 id 必须**原样返回**，不要新增、不要遗漏、不要改菜名。
+
+【菜品】
+${lines}
+
+返回严格 JSON：
+{"items":[{"id":"原样返回的 id","category":"固定大类之一"}]}`;
 }
 
 export function buildWeeklyInsightPrompt(input: {
