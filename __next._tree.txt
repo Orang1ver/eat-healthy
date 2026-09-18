@@ -1,0 +1,2 @@
+:HL["/eat-healthy/_next/static/chunks/1d8j4mqgu-9b6.css","style"]
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"tvzOfPgN_-RO3fKXqnY5G"}
