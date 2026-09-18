@@ -18,6 +18,11 @@ export type Release = {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.9.0",
+    date: "2026-09-17",
+    highlights: ["菜单库可以导出了：文字版最适合贴给 AI（也能贴回来重建菜单库），JSON 给程序用；都能复制或下载"],
+  },
+  {
     version: "1.8.1",
     date: "2026-09-17",
     highlights: [

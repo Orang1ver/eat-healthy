@@ -10,6 +10,8 @@ import { FLAVOR_TAGS, AVOID_TAGS } from "../lib/tags";
 import { TAKEOUT_CATEGORIES } from "../lib/takeoutCategories";
 import { loadTakeoutDishes, addTakeoutDishes, applyTakeoutCategories, resetTakeoutDishes, importTakeoutDishes, removeTakeoutMerchant, renameTakeoutMerchant, clearTakeoutDishes, pushTakeoutUndo, peekTakeoutUndo, popTakeoutUndo, type TakeoutUndo } from "../lib/storage";
 import { categoryCounts, filterDishes, groupByCategory, groupByRestaurant } from "../lib/takeoutView";
+import { EXPORT_FORMAT_LABEL, exportContent, exportFileName, type ExportFormat } from "../lib/takeoutExport";
+import { todayISO } from "../lib/date";
 import { fileToDataUrls, MAX_SLICES } from "../lib/image";
 import type { TakeoutDish } from "../lib/types";
 
@@ -64,6 +66,11 @@ export default function TakeoutLibraryPage() {
   /** 看库的方式与品类筛选：纯展示偏好，只放在内存里（刷新回到"按商家 + 全部"） */
   const [view, setView] = useState<"restaurant" | "category">("restaurant");
   const [pickedCategory, setPickedCategory] = useState<string | null>(null);
+
+  /** 导出面板：格式（文字版/JSON）、是否展开、复制反馈 */
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("text");
+  const [exportMsg, setExportMsg] = useState("");
 
   useEffect(() => {
     setDishes(loadTakeoutDishes());
@@ -126,6 +133,45 @@ export default function TakeoutLibraryPage() {
     }
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
   }, [recat]);
+
+  /** 导出内容（只在面板展开时算，避免每次渲染都拼一遍整库文本） */
+  const exportText = useMemo(
+    () => (exportOpen && dishes.length > 0 ? exportContent(dishes, exportFormat, todayISO()) : ""),
+    [exportOpen, dishes, exportFormat],
+  );
+
+  /** 复制导出内容。iOS 上 navigator.clipboard 可能需要用户手势 —— 这里就在点击回调里，正常可用；
+   *  万一被浏览器拒绝，就把真实原因说出来（下面的文本框可以长按全选复制）。 */
+  async function copyExport() {
+    setExportMsg("");
+    try {
+      await navigator.clipboard.writeText(exportText);
+      setExportMsg("已复制 ✅ 直接粘给 AI 就行");
+    } catch (e) {
+      setExportMsg(
+        `浏览器不让自动复制（${e instanceof Error ? e.message : String(e)}）—— 长按下面的文本框全选复制即可`,
+      );
+    }
+  }
+
+  /** 下载成文件：文字版 .md / JSON .json */
+  function downloadExport() {
+    try {
+      const isJson = exportFormat === "json";
+      const blob = new Blob([exportText], { type: isJson ? "application/json;charset=utf-8" : "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = exportFileName(todayISO(), exportFormat);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setExportMsg(`已下载 ${a.download}`);
+    } catch (e) {
+      setExportMsg(`下载失败：${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   async function importFromText() {
     if (!importText.trim() && shots.length === 0) return;
@@ -692,6 +738,87 @@ export default function TakeoutLibraryPage() {
               ? "点任意菜品可以修改；点商家右侧可整家删除。删错了用上面的「撤销」挽回。"
               : "按品类查看时，点任意菜品可以改商家/品类/价格；整家改名或删除请切回「按商家」。"}
           </p>
+        </div>
+
+        {/* 导出菜单库：给 AI 看选文字版，给程序/精确解析选 JSON */}
+        <div className="heal-card mb-4 p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">📤 导出菜单库</span>
+            {dishes.length > 0 && (
+              <button
+                type="button"
+                aria-expanded={exportOpen}
+                onClick={() => {
+                  setExportOpen((v) => !v);
+                  setExportMsg("");
+                }}
+                className="heal-btn heal-btn-ghost px-2.5 py-1 text-[12px]"
+              >
+                {exportOpen ? "收起" : "导出"}
+              </button>
+            )}
+          </div>
+          <p className="text-[12px] leading-5" style={{ color: "var(--heal-muted)" }}>
+            <b>文字版</b>最适合贴给 AI：按商家分段、一行一道菜，模型不用猜结构就能读懂，也最省字数；
+            它还是本页「文字导入」能直接吃进去的格式，可以拿去在另一台设备上重建菜单库。
+            <b>JSON</b> 适合给程序或需要精确字段的场景（无歧义、可直接解析）。
+          </p>
+
+          {dishes.length === 0 ? (
+            <p className="mt-2 text-[12px]" style={{ color: "var(--heal-muted)" }}>
+              菜单库还是空的，先加点菜再导出。
+            </p>
+          ) : (
+            exportOpen && (
+              <>
+                <div className="mb-2 mt-2 flex flex-wrap gap-1.5">
+                  {(["text", "json"] as ExportFormat[]).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      aria-pressed={exportFormat === f}
+                      onClick={() => {
+                        setExportFormat(f);
+                        setExportMsg("");
+                      }}
+                      className={`heal-btn px-2.5 py-1 text-[12px] ${exportFormat === f ? "heal-btn-feature" : "heal-btn-ghost"}`}
+                    >
+                      {EXPORT_FORMAT_LABEL[f]}
+                    </button>
+                  ))}
+                </div>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={copyExport} className="heal-btn heal-btn-primary px-3 py-2 text-sm">
+                    📋 复制全部
+                  </button>
+                  <button type="button" onClick={downloadExport} className="heal-btn heal-btn-ghost px-3 py-2 text-sm">
+                    ⬇️ 下载 {exportFileName(todayISO(), exportFormat)}
+                  </button>
+                  {exportMsg && (
+                    <span className="text-[12px] leading-5" style={{ color: "var(--heal-blue-text)" }}>
+                      {exportMsg}
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  readOnly
+                  rows={8}
+                  aria-label="导出内容"
+                  value={exportText}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="w-full rounded-2xl border p-3 text-[12px] leading-5"
+                  style={{
+                    borderColor: "var(--heal-card-border)",
+                    background: "var(--heal-bg)",
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  }}
+                />
+                <p className="mt-1 text-[12px]" style={{ color: "var(--heal-muted)" }}>
+                  共 {dishes.length} 道菜 · {exportText.length} 字符（手机上可直接长按全选复制）
+                </p>
+              </>
+            )
+          )}
         </div>
       </div>
 
